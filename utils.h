@@ -10,6 +10,68 @@
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 
+// Custom assert macro that prints a formatted error message and breaks immediately from the calling code
+// (instead of instead the code to _wassert)
+#if defined(NDEBUG)
+#define ZOMBOLITE_ASSERT(cond,msg,...) do { (void)( true ? (void)0 : (void)(cond) ); } while(0,0)
+#define ZOMBOLITE_ASSERT_RETURN(cond,retval,msg,...) do { if (!(cond)) { return (retval); } } while(0,0)
+#elif defined(_MSC_VER)
+#define ZOMBOLITE_ASSERT(cond,msg,...) \
+	__pragma(warning(push)) \
+	__pragma(warning(disable:4127)) \
+	do { \
+	if (!(cond)) { \
+	char *buffer = (char*)malloc(1024); \
+	_snprintf_s(buffer, 1024, 1023, msg ## "\n", __VA_ARGS__); \
+	buffer[1023] = 0; \
+	OutputDebugStringA(buffer); \
+	free(buffer); \
+	IsDebuggerPresent() ? __debugbreak() : assert(cond); \
+	} \
+	} while(0,0) \
+	__pragma(warning(pop))
+#define ZOMBOLITE_ASSERT_RETURN(cond,retval,msg,...) \
+	__pragma(warning(push)) \
+	__pragma(warning(disable:4127)) \
+	do { \
+	if (!(cond)) { \
+	char *buffer = (char*)malloc(1024); \
+	_snprintf_s(buffer, 1024, 1023, msg ## "\n", __VA_ARGS__); \
+	buffer[1023] = 0; \
+	OutputDebugStringA(buffer); \
+	free(buffer); \
+	IsDebuggerPresent() ? __debugbreak() : assert(cond); \
+	return (retval); \
+	} \
+	} while(0,0) \
+	__pragma(warning(pop))
+#else
+// Unsupported platform
+#define ZOMBOLITE_ASSERT(cond,msg,...) \
+	__pragma(warning(push)) \
+	__pragma(warning(disable:4127)) \
+	do { \
+	if (!(cond)) { \
+	printf(buffer, msg ## "\n", __VA_ARGS__); \
+	assert(cond); \
+	} \
+	} while(0,0) \
+	__pragma(warning(pop))
+#define ZOMBOLITE_ASSERT_RETURN(cond,retval,msg,...) \
+	__pragma(warning(push)) \
+	__pragma(warning(disable:4127)) \
+	do { \
+	if (!(cond)) { \
+	printf(buffer, msg ## "\n", __VA_ARGS__); \
+	assert(cond); \
+	return (retval); \
+	} \
+	} while(0,0) \
+	__pragma(warning(pop))
+#endif
+#define ZOMBOLITE_ERROR(msg,...) ZOMBOLITE_ASSERT(0, msg, __VA_ARGS__)
+#define ZOMBOLITE_ERROR_RETURN(retval,msg,...) ZOMBOLITE_ASSERT_RETURN(0, retval, msg, __VA_ARGS__)
+
 // Use CUDA_CHECK() in host code to validate the result of CUDA functions that return an error.
 #define ENABLE_CUDA_CHECK 1 // disable if you want CUDA_CHECK() to compile away
 #if ENABLE_CUDA_CHECK
