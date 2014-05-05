@@ -24,6 +24,7 @@
     <ClInclude Include="stb_image_write.h">
       <Filter>boilerplate</Filter>
     </ClInclude>
+    <ClInclude Include="evolisa.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="evo.cu" />

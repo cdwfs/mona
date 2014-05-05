@@ -2,6 +2,8 @@
 // CS264 Final Project 2009
 // by Drew Robb & Joy Ding
 
+#include "evolisa.h"
+
 #include "utils.h"
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
