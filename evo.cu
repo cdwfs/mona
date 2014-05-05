@@ -26,36 +26,6 @@ inline __host__ __device__ void swap(float& a, float& b) {
 	b = temp;
 }
 
-//rgb class! initialized with float4's from our texture memory
-class rgba {
-public:
-	float r;
-	float g;
-	float b;
-	float a;
-	__device__ rgba() {
-	}
-	inline __device__ rgba(float4 f) {
-		r = f.x;
-		g = f.y;
-		b = f.z;
-		a = f.w;
-	}
-	
-};
-
-//triangle class. stores color/alpha values, as well as coordinates of vertices
-class triangle {
-public:
-	float x1;
-	float y1;
-	float x2;
-	float y2;
-	float x3;
-	float y3;
-	rgba c;
-};
-
 //module for creating a float on our device
 inline __host__ __device__ float4 operator-(float4 a, float4 b)
 {
