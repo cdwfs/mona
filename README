@@ -1,0 +1,15 @@
+README
+1) Upload the entire robb_joyding_evolisa.tgz onto SEAS and untar. The tgz contains the python modules
+PIL (python image library) and jinja2 (templating). They have been compiled for resonance, and the extracted
+tgz should work. If something goes from, you may need to actually install the two modules yourself on
+whatever system you are using, and delete the PIL and Jinja2 folders.
+2) Log in to resonance
+3) Load PyCuda modules: module load packages/pycuda/0.93; module load packages/cuda/2.2
+4) Run with command: python evo.py imagename.jpg. No parameters are available by command line, but
+easily editable in the python script. The resultant images (one ever 100 iterations) will be outputted to
+./temp_images. The stdout gives the fitness of the solution after every iteration.
+We have provided a test image small and large test image:
+python evo.py slisa.jpg for small image
+python evo.py lisa.jpg for large image
+The small image will render to decent quality in a minute or so, the large image takes about 10-20 minutes.
+
