@@ -1,3 +1,7 @@
+// Adapted from evo.py
+// CS264 Final Project 2009
+// by Drew Robb & Joy Ding
+
 typedef unsigned int uint;
 
 // poor man's random number generator
