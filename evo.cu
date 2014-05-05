@@ -9,16 +9,18 @@ typedef unsigned int uint;
 #define clip(a,l,h) (max(min(a,h),l))
 
 
-#define ALPHALIM {{ALPHALIM}}            // alpha limit for images
-#define ALPHAOFFSET {{ALPHAOFFSET}} //alpha offset
-#define CHECKLIM {{CHECKLIM}} //number of times we have a non-improving value before we terminate
-#define SCALE {{SCALE}} //the factor by which we would like to scale up the image in the final render
-#define TIDX threadIdx.x
-#define TIDY threadIdx.y
-#define BID blockIdx.x
-#define W ((float) {{W}}) //width
-#define H ((float) {{H}}) //height
-#define KSIZE {{KSIZE}}   // grid width/height
+#define ALPHALIM 0.2            // alpha limit for images
+#define ALPHAOFFSET (ALPHALIM/2) //alpha offset
+#define CHECKLIM 150 //number of times we have a non-improving value before we terminate
+#define SCALE 2 //the factor by which we would like to scale up the image in the final render
+#define W ((float) 300) //width of lisa.jpg
+#define H ((float) 391) //height of lisa.jpg
+#define SIZE 30    // number of particles for PSO
+#define KSIZE 16   // grid width/height
+#define PSOITERS 1000 // maximum number of iterations at each PSO stage (overridden by checklimit)
+#define DIM 800 // number of triangles to render (max)
+#define NHOODSIZE 12 // Size of neighbhorhood (PSO topology)
+
 
 
 //luminance =  0.3 R + 0.59 G + 0.11 B
@@ -99,7 +101,7 @@ inline   __device__  void addtriangle(rgba * im, triangle * T, bool add)
 	TT.c.g = ALPHALIM * TT.c.g - ALPHAOFFSET;
 	TT.c.b = ALPHALIM * TT.c.b - ALPHAOFFSET;
 	
-	if(TIDY+TIDX == 0) {
+	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value so that we can render triangles properly
 		bad = 0;
 		if     (TT.y1 < TT.y2 && TT.y2 < TT.y3) {
@@ -145,8 +147,8 @@ inline   __device__  void addtriangle(rgba * im, triangle * T, bool add)
 	if(bad) {return;}
 
 	// shade first half of triangle
-	for(int yy = h1 + TIDY; yy < h2; yy += KSIZE) {
-		for(int i = TIDX + clip(xs + m1 * (yy - H * y1), 0.0, W); 
+	for(int yy = h1 + threadIdx.y; yy < h2; yy += KSIZE) {
+		for(int i = threadIdx.x + clip(xs + m1 * (yy - H * y1), 0.0, W); 
 			i < clip(xt + m2 * (yy - H * y1), 0.0, W); i += KSIZE) {
 			int g = W * yy + i;
 			im[g].r += TT.c.r;
@@ -158,7 +160,7 @@ inline   __device__  void addtriangle(rgba * im, triangle * T, bool add)
 
 	// update slopes, row end points for second half of triangle
 	__syncthreads();
-	if(TIDX+TIDY == 0) {
+	if(threadIdx.x+threadIdx.y == 0) {
 		xs += m1 * (H * (y2 - y1));
 		xt += m2 * (H * (y2 - y1));
 		if(swap) m2 = m3;
@@ -167,8 +169,8 @@ inline   __device__  void addtriangle(rgba * im, triangle * T, bool add)
 	__syncthreads();
 
 	// shade second half of triangle
-	for(int yy = h2 + TIDY; yy < h3; yy += KSIZE) {
-		for(int i = TIDX + clip(xs + m1 * (yy - H * y2 + 1), 0, W); 
+	for(int yy = h2 + threadIdx.y; yy < h3; yy += KSIZE) {
+		for(int i = threadIdx.x + clip(xs + m1 * (yy - H * y2 + 1), 0, W); 
 			i < clip(xt + m2 * (yy - H * y2 + 1), 0, W); i += KSIZE) {
 			int g = W * yy + i;
 			im[g].r += TT.c.r;
@@ -194,7 +196,7 @@ inline   __device__  void scoretriangle(float * sum, triangle * T)
 	TT.c.g = ALPHALIM * TT.c.g - ALPHAOFFSET;
 	TT.c.b = ALPHALIM * TT.c.b - ALPHAOFFSET;
 	
-	if(TIDY+TIDX == 0) {
+	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value, yes, this is retarded
 		bad = 0;
 		if     (TT.y1 < TT.y2 && TT.y2 < TT.y3) {
@@ -239,8 +241,8 @@ inline   __device__  void scoretriangle(float * sum, triangle * T)
 
 	// score first half of triangle. This substract the score prior to the last triangle
 	float localsum = 0.0;
-	for(int yy = TIDY+h1; yy < h2; yy+=KSIZE) {
-		for(int i = TIDX + clip(xs + m1 * (yy - H * y1), 0.0, W); 
+	for(int yy = threadIdx.y+h1; yy < h2; yy+=KSIZE) {
+		for(int i = threadIdx.x + clip(xs + m1 * (yy - H * y1), 0.0, W); 
 			i < clip(xt + m2 * (yy - H * y1 ), 0.0, W); i += KSIZE) {
 
 			rgba o = tex2D(currimg, i, yy) - tex2D(refimg, i, yy);
@@ -254,7 +256,7 @@ inline   __device__  void scoretriangle(float * sum, triangle * T)
 	
 	// update slopes and limits to score second half of triangle
 	__syncthreads();
-	if(TIDX+TIDY == 0) {
+	if(threadIdx.x+threadIdx.y == 0) {
 		xs += m1 * (H * (y2 - y1));
 		xt += m2 * (H * (y2 - y1));
 		if(swap) m2 = m3;
@@ -263,8 +265,8 @@ inline   __device__  void scoretriangle(float * sum, triangle * T)
 	__syncthreads();
 		
 	// score second half
-	for(int yy = TIDY+h2; yy < h3; yy+=KSIZE) {
-		for(int i = TIDX + clip(TIDX + xs + m1 * (yy - H * y2 + 1), 0, W);
+	for(int yy = threadIdx.y+h2; yy < h3; yy+=KSIZE) {
+		for(int i = threadIdx.x + clip(threadIdx.x + xs + m1 * (yy - H * y2 + 1), 0, W);
 			i < clip(xt + m2 * (yy - H * y2 + 1), 0, W); i += KSIZE) {
 
 			rgba o = tex2D(currimg, i, yy) - tex2D(refimg, i, yy);
@@ -276,11 +278,11 @@ inline   __device__  void scoretriangle(float * sum, triangle * T)
 		}
 	}
 	__shared__ float sums[KSIZE];
-	if(TIDX == 0) sums[TIDY] = 0.0;
+	if(threadIdx.x == 0) sums[threadIdx.y] = 0.0;
 	for(int i = 0; i < KSIZE; i++)
-		if(TIDX ==i) sums[TIDY] += localsum;
+		if(threadIdx.x ==i) sums[threadIdx.y] += localsum;
 	__syncthreads();
-	if(TIDX+TIDY == 0) {
+	if(threadIdx.x+threadIdx.y == 0) {
 		for(int i = 0; i < KSIZE; i++) {
 			*sum += sums[i];
 		}
@@ -301,51 +303,51 @@ __global__ void run(triangle * curr,   //D (triangles)
 					float * nbval,
 					float * gbval,
 					int * M) {
-	uint r = pos[0].x1 * 100 + TIDX * 666 + BID * 94324 + TIDY * 348;
+	uint r = pos[0].x1 * 100 + threadIdx.x * 666 + blockIdx.x * 94324 + threadIdx.y * 348;
 	__shared__ int check; check = 0;
 
 
 	// loop over pso updates
-	for(int q = 0; q < {{psoiters}}; q++) {
+	for(int q = 0; q < PSOITERS; q++) {
 
 		// integrate position
-		if(q > 0 && TIDY==0 && TIDX < 10) {
+		if(q > 0 && threadIdx.y==0 && threadIdx.x < 10) {
 			float vmax = .2 * rand() + 0.05;
 			float vmin = -.2 * rand() - 0.05;	
-			float * v = (((float *) &vel[BID]) + TIDX);
-			float * p = (((float *) &pos[BID]) + TIDX);
-			float * l = (((float *) &lbest[BID]) + TIDX);
-			float * n = (((float *) &nbest[BID]) + TIDX);
+			float * v = (((float *) &vel[blockIdx.x]) + threadIdx.x);
+			float * p = (((float *) &pos[blockIdx.x]) + threadIdx.x);
+			float * l = (((float *) &lbest[blockIdx.x]) + threadIdx.x);
+			float * n = (((float *) &nbest[blockIdx.x]) + threadIdx.x);
 			*v *= .85;
 			*v += 0.70 * rand() * (*n - *p);
 			*v += 0.70 * rand() * (*l - *p);
 			*v = max(*v, vmin);
 			*v = min(*v, vmax);
 			*p = *p + *v;
-			if(fit[BID] > 0 && rand() < 0.01)
+			if(fit[blockIdx.x] > 0 && rand() < 0.01)
 				*p = rand();
 		}
 		__syncthreads();
 
 		// eval fitness
-		fit[BID] = 0;
-		scoretriangle(&fit[BID], &pos[BID]);
+		fit[blockIdx.x] = 0;
+		scoretriangle(&fit[blockIdx.x], &pos[blockIdx.x]);
 
-		if(TIDX+TIDY == 0) {
+		if(threadIdx.x+threadIdx.y == 0) {
 			// local max find
-			if(fit[BID] < lbval[BID]) {
-				lbest[BID] = pos[BID];
-				lbval[BID] = fit[BID];
+			if(fit[blockIdx.x] < lbval[blockIdx.x]) {
+				lbest[blockIdx.x] = pos[blockIdx.x];
+				lbval[blockIdx.x] = fit[blockIdx.x];
 			}
 			// hack to improve early PSO convergence
-			else if(lbval[BID] > 0) { 
-				lbval[BID] *= 1.1;
+			else if(lbval[blockIdx.x] > 0) { 
+				lbval[blockIdx.x] *= 1.1;
 			}
 
 			// global max find
-			if (fit[BID] < *gbval) {
-				*gbval = fit[BID];
-				curr[*M] = pos[BID];
+			if (fit[blockIdx.x] < *gbval) {
+				*gbval = fit[blockIdx.x];
+				curr[*M] = pos[blockIdx.x];
 				check = 0;
 			}
 			else check++;
@@ -353,21 +355,21 @@ __global__ void run(triangle * curr,   //D (triangles)
 			// neighbor max find (next k topology)
 			float v;
 			int b;
-			b = BID;
-			v = nbval[b % {{S}}];
-			for(int j = 0; j < {{nhoodsize}}; j++) {
-				if(lbval[(BID + j) % {{S}}] < v) {
-					v = lbval[(BID + j) % {{S}}];
-					b = BID + j;
+			b = blockIdx.x;
+			v = nbval[b % SIZE];
+			for(int j = 0; j < NHOODSIZE; j++) {
+				if(lbval[(blockIdx.x + j) % SIZE] < v) {
+					v = lbval[(blockIdx.x + j) % SIZE];
+					b = blockIdx.x + j;
 				}
 			}
-			if(v < nbval[BID]) {
-				nbval[BID] = v;
-				nbest[BID] = lbest[b % {{S}}];
+			if(v < nbval[blockIdx.x]) {
+				nbval[blockIdx.x] = v;
+				nbest[blockIdx.x] = lbest[b % SIZE];
 			}	
 			// hack to improve early PSO convergence
-			else if(lbval[BID] > 0) 
-				nbval[BID] *= 1.1;
+			else if(lbval[blockIdx.x] > 0) 
+				nbval[blockIdx.x] *= 1.1;
 
 		}
 		// exit if PSO stagnates
@@ -387,8 +389,8 @@ __global__ void render(rgba * im,
 					   float * score) {
 
 	// clear image
-	for(int y = TIDY; y < H; y += KSIZE) {
-		for(int i = TIDX; i < W; i += KSIZE) {
+	for(int y = threadIdx.y; y < H; y += KSIZE) {
+		for(int i = threadIdx.x; i < W; i += KSIZE) {
 			int g = y * W + i;
 			im[g].r = 0.0;
 			im[g].g = 0.0;
@@ -396,25 +398,25 @@ __global__ void render(rgba * im,
 		}
 	}
 	// render all triangles
-	for(int k = 0; k < {{D}}; k++)
+	for(int k = 0; k < DIM; k++)
 		addtriangle(im, &curr[k], 1);
 
 	// score the image
 	__shared__ float sums[KSIZE*KSIZE];
-	sums[KSIZE*TIDY + TIDX] = 0.0;
-	for(int yy = TIDY; yy < H; yy+=KSIZE) {
-		for(int i = TIDX; i < W; i += KSIZE) {
+	sums[KSIZE*threadIdx.y + threadIdx.x] = 0.0;
+	for(int yy = threadIdx.y; yy < H; yy+=KSIZE) {
+		for(int i = threadIdx.x; i < W; i += KSIZE) {
 			int g = yy * W + i;
 			rgba o = tex2D(refimg, i, yy);
 			o.r -= im[g].r; o.g -= im[g].g; o.b -= im[g].b;
-			sums[KSIZE*TIDY+TIDX] += o.r * o.r + o.g * o.g + o.b * o.b + 
+			sums[KSIZE*threadIdx.y+threadIdx.x] += o.r * o.r + o.g * o.g + o.b * o.b + 
 				(RL * o.r + GL * o.g + BL * o.b) * 
 				(RL * o.r + GL * o.g + BL * o.b);
 		}
 	}
 	__syncthreads();
 	*score = 0;
-	if(TIDX+TIDY == 0) {
+	if(threadIdx.x+threadIdx.y == 0) {
 		for(int i = 0; i < KSIZE*KSIZE; i++) {
 			*score += sums[i];
 		}
@@ -434,7 +436,7 @@ inline   __device__  void addtriangleproof(rgba * im, triangle * T)
 	//sort points by y value, yes, this is retarded
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
 	__shared__ int h1,h2,h3,swap,bad;
-	if(TIDX+TIDY==0) {
+	if(threadIdx.x+threadIdx.y==0) {
 		T->c.a = clip(T->c.a, 0.0, 1.0);
 		T->c.r = clip(T->c.r, 0.0, 1.0);
 		T->c.g = clip(T->c.g, 0.0, 1.0);
@@ -474,8 +476,8 @@ inline   __device__  void addtriangleproof(rgba * im, triangle * T)
 	__syncthreads();
 
 	if(bad) return;
-	for(int yy = h1 + TIDY; yy < h2; yy += KSIZE) {
-		for(int i = TIDX + clip(xs + m1 * (yy - (SCALE*H) * y1), 0.0, (SCALE*W)); 
+	for(int yy = h1 + threadIdx.y; yy < h2; yy += KSIZE) {
+		for(int i = threadIdx.x + clip(xs + m1 * (yy - (SCALE*H) * y1), 0.0, (SCALE*W)); 
 			i < clip(xt + m2 * (yy - (SCALE*H) * y1), 0.0, (SCALE*W)); i += KSIZE) {
 			if(i > (SCALE*W) || i < 0) continue;
 			int g = (SCALE*W) * yy + i;
@@ -488,7 +490,7 @@ inline   __device__  void addtriangleproof(rgba * im, triangle * T)
 
 	}
 	__syncthreads();
-	if(TIDX+TIDY == 0) {
+	if(threadIdx.x+threadIdx.y == 0) {
 		xs += m1 * ((SCALE*H) * (y2 - y1));
 		xt += m2 * ((SCALE*H) * (y2 - y1));
 		if(swap) m2 = m3;
@@ -496,8 +498,8 @@ inline   __device__  void addtriangleproof(rgba * im, triangle * T)
 	}
 	__syncthreads();
 
-	for(int yy = h2 + TIDY; yy < h3; yy += KSIZE) {
-		for(int i = TIDX + clip(xs + m1 * (yy - (SCALE*H) * y2 + 1), 0, (SCALE*W)); 
+	for(int yy = h2 + threadIdx.y; yy < h3; yy += KSIZE) {
+		for(int i = threadIdx.x + clip(xs + m1 * (yy - (SCALE*H) * y2 + 1), 0, (SCALE*W)); 
 			i < clip(xt + m2 * (yy - (SCALE*H) * y2 + 1), 0, (SCALE*W)); i += KSIZE) {
 			if(i > (SCALE*W) || i < 0) continue;
 			int g = (SCALE*W) * yy + i;
@@ -515,8 +517,8 @@ __global__ void renderproof(rgba * im,
 					   triangle * curr,
 					   float * score) {
 
-	for(int y = TIDY; y < SCALE*H; y += KSIZE) {
-		for(int i = TIDX; i < SCALE*W; i += KSIZE) {
+	for(int y = threadIdx.y; y < SCALE*H; y += KSIZE) {
+		for(int i = threadIdx.x; i < SCALE*W; i += KSIZE) {
 			int g = y * SCALE*W + i;
 			im[g].r = 0.0;
 			im[g].g = 0.0;
@@ -524,11 +526,11 @@ __global__ void renderproof(rgba * im,
 			im[g].a = 1.0;
 		}
 	}
-	for(int k = 0; k < {{D}}; k++)
+	for(int k = 0; k < DIM; k++)
 		addtriangleproof(im, &curr[k]);
 
-	for(int yy = TIDY; yy < SCALE*H; yy+=KSIZE) {
-		for(int i = TIDX; i < SCALE*W; i += KSIZE) {
+	for(int yy = threadIdx.y; yy < SCALE*H; yy+=KSIZE) {
+		for(int i = threadIdx.x; i < SCALE*W; i += KSIZE) {
 			int g = yy * SCALE*W + i;
 			im[g].r = clip(im[g].r,0.0,1.0);
 			im[g].g = clip(im[g].g,0.0,1.0);
