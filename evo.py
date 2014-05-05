@@ -21,6 +21,19 @@ from PIL import Image
 from PIL import _imaging
 import os, sys
 
+def im2array(im):
+    a = N.fromstring(im.tostring(), N.uint8)
+    a.shape = im.size[1], im.size[0], 3
+    return a
+
+def array2im(a):
+    mode = "RGBA"
+    return PIL.Image.fromstring(mode, (a.shape[1], a.shape[0]), a.tostring())
+
+def image2array(path):
+    return im2array(PIL.Image.open(path))
+
+
 # editable program parameters
 iters = 4000          # total number of iterations
 psoiters = 1000       # maximum number of iterations at each PSO stage (overridden by checklimit)
@@ -38,7 +51,7 @@ os.system("rm ./temp_images/*")
 
 # setup input image
 path = sys.argv[1]    # input image
-oim = bmp.im2array(Image.open(path)) / 255.0
+oim = im2array(Image.open(path)) / 255.0
 width = oim.shape[1]
 height = oim.shape[0]
 assert width % 4 == 0, 'Weird bug of pycuda texture, use image with width divisible by 4'
@@ -163,7 +176,7 @@ for i in range(iters):
         Grenderprooffunc(Gim3, Gcurr, GK, Gscore, block=(ksize,ksize,1), grid=(1,1))
         im2 = 255.0 * cuda.from_device_like(Gim3, im3)
         im2 = im2.astype(N.uint8)
-        X = bmp.array2im(im2)
+        X = array2im(im2)
         X.save("./temp_images/%s%s.jpg" % (path, iters), "JPEG", quality=100)
 
 
