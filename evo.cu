@@ -3,6 +3,7 @@
 // by Drew Robb & Joy Ding
 
 #include "evolisa.h"
+#include "utils.h"
 
 typedef unsigned int uint;
 
@@ -32,8 +33,8 @@ inline __host__ __device__ float4 operator-(float4 a, float4 b)
     return make_float4(a.x - b.x, a.y - b.y, a.z - b.z,  a.w - b.w);
 }
      
-texture<float4, 2> currimg;  // current image rendered in triangles
-texture<float4, 2> refimg; // original reference image
+texture<float4, cudaTextureType2D, cudaReadModeElementType> currimg;  // current image rendered in triangles
+texture<float4, cudaTextureType2D, cudaReadModeElementType> refimg; // original reference image
 
 
 // adds a triangle to the working image, or subtracts it if add==0
@@ -475,8 +476,7 @@ inline   __device__  void addtriangleproof(rgba * im, triangle * T)
 
 // similar to render, but for output. Also not worth looking at.
 __global__ void renderproof(rgba * im,
-					   triangle * curr,
-					   float * score) {
+					   triangle * curr) {
 
 	for(int y = threadIdx.y; y < kEvoOutputScale*kEvoImageHeight; y += kEvoBlockDim) {
 		for(int i = threadIdx.x; i < kEvoOutputScale*kEvoImageWidth; i += kEvoBlockDim) {
@@ -501,4 +501,36 @@ __global__ void renderproof(rgba * im,
 	}
 
 
+}
+
+void getTextureReferences(const textureReference **outRefImg, const textureReference **outCurrImg)
+{
+	CUDA_CHECK( cudaGetTextureReference(outRefImg, &refimg) );
+	CUDA_CHECK( cudaGetTextureReference(outCurrImg, &currimg) );
+}
+
+void launch_render(rgba *d_im, triangle *d_curr, int *d_currentTriangleIndex, float *d_currentScore)
+{
+	dim3 gridDim(1,1);
+	dim3 blockDim(kEvoBlockDim, kEvoBlockDim);
+	render<<<gridDim, blockDim>>>(d_im, d_curr, d_currentTriangleIndex, d_currentScore);
+	CUDA_CHECK( cudaGetLastError() );
+}
+
+void launch_renderproof(rgba * d_im, triangle * d_curr)
+{
+	dim3 gridDim(1,1);
+	dim3 blockDim(kEvoBlockDim, kEvoBlockDim);
+	renderproof<<<gridDim, blockDim>>>(d_im, d_curr);
+	CUDA_CHECK( cudaGetLastError() );
+}
+
+void launch_run(triangle *d_curr, triangle *d_pos, triangle *d_vel, float *d_fit,
+	triangle *d_lbest, float *d_lbval, triangle *d_nbest, float *d_nbval, float *d_gbval,
+	int *d_K)
+{
+	dim3 gridDim(kEvoPsoParticleCount, 1);
+	dim3 blockDim(kEvoBlockDim, kEvoBlockDim, 1);
+	run<<<gridDim, blockDim>>>(d_curr, d_pos, d_vel, d_fit, d_lbest, d_lbval, d_nbest, d_nbval, d_gbval, d_K);
+	CUDA_CHECK( cudaGetLastError() );
 }

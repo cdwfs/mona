@@ -173,7 +173,7 @@ for i in range(iters):
     if i % outputperiters == 0:
         K = -N.ones(1).astype(N.int32)
         GK = cuda.to_device(K)
-        Grenderprooffunc(Gim3, Gcurr, GK, Gscore, block=(ksize,ksize,1), grid=(1,1))
+        Grenderprooffunc(Gim3, Gcurr, block=(ksize,ksize,1), grid=(1,1))
         im2 = 255.0 * cuda.from_device_like(Gim3, im3)
         im2 = im2.astype(N.uint8)
         X = array2im(im2)
