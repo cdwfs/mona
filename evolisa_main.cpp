@@ -17,11 +17,11 @@
 
 // From evo.cu
 void getTextureReferences(const textureReference **outRefImg, const textureReference **outCurrImg);
-void launch_render(rgba *d_im, triangle *d_curr, int *d_currentTriangleIndex, float *d_currentScore);
-void launch_renderproof(rgba * d_im, triangle * d_curr);
+void launch_render(rgba *d_im, triangle *d_curr, int *d_currentTriangleIndex, float *d_currentScore, int imgWidth, int imgHeight, int imgPitch);
+void launch_renderproof(rgba * d_im, triangle * d_curr, int imgWidth, int imgHeight, int imgPitch);
 void launch_run(triangle *d_curr, triangle *d_pos, triangle *d_vel, float *d_fit,
 	triangle *d_lbest, float *d_lbval, triangle *d_nbest, float *d_nbval, float *d_gbval,
-	int *d_K);
+	int *d_K, int imgWidth, int imgHeight);
 
 // Clamp x to the range [min..max] (inclusive)
 static inline float clamp(float x, float min, float max)
@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
 		CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(int32_t), cudaMemcpyHostToDevice) );
 
 		// Render initial solution
-		launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore);
+		launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore, imgWidth, imgHeight, originalPixelsPitch/sizeof(rgba));
 		CUDA_CHECK( cudaBindTexture2D(&offset, currImg, d_currentPixels, &channelDesc, imgWidth, imgHeight, originalPixelsPitch) );
 		CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 
@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
 			CUDA_CHECK( cudaMemcpy(d_currentTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
 			currentTriangleIndex = (int32_t)( randf() * min(iIter/2, kEvoMaxTriangleCount) );
 			CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(int32_t), cudaMemcpyHostToDevice) );
-			launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore);
+			launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore, imgWidth, imgHeight, originalPixelsPitch/sizeof(rgba));
 			CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 		}
 		// texturize current solution
@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
 			d_psoParticlesLocalBestPos, d_psoParticlesLocalBestFit,
 			d_psoParticlesNhoodBestPos, d_psoParticlesNhoodBestFit,
 			d_psoParticlesGlobalBestFit,
-			d_currentTriangleIndex);
+			d_currentTriangleIndex, imgWidth, imgHeight);
 
 		// Update best score if needed
 		if (currentScore < bestScore && currentScore != 0)
@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
 		{
 			currentTriangleIndex = -1;
 			CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(uint32_t), cudaMemcpyHostToDevice) );
-			launch_renderproof(d_scaledOutputPixels, d_currentTriangles);
+			launch_renderproof(d_scaledOutputPixels, d_currentTriangles, kEvoOutputScale*imgWidth, kEvoOutputScale*imgHeight, scaledPixelsPitch/sizeof(rgba));
 			CUDA_CHECK( cudaMemcpy2D(h_scaledOutputPixels,  kEvoOutputScale*srcPitch, d_scaledOutputPixels, scaledPixelsPitch, kEvoOutputScale*srcPitch, kEvoOutputScale*imgHeight, cudaMemcpyDeviceToHost) );
 			// Convert to RGBA8888 for output
 			for(int32_t iPixel=0; iPixel<kEvoOutputScale*imgWidth*kEvoOutputScale*imgHeight; ++iPixel)
