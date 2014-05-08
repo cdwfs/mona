@@ -111,12 +111,10 @@ int main(int argc, char *argv[])
 	}
 	// Upload to GPU
 	rgba *d_originalPixels = NULL; // Goim
-	//CUDA_CHECK( cudaMalloc(&d_originalPixels, imgWidth*imgHeight*sizeof(rgba)) );
-	//CUDA_CHECK( cudaMemcpy(d_originalPixels, h_originalPixels, imgWidth*imgHeight*sizeof(rgba), cudaMemcpyHostToDevice) );
 	size_t srcPitch = (size_t)imgWidth*sizeof(float4);
 	size_t originalPixelsPitch = 0;
 	CUDA_CHECK( cudaMallocPitch(&d_originalPixels, &originalPixelsPitch,                   srcPitch,           imgHeight) );
-	CUDA_CHECK( cudaMemcpy2D(    d_originalPixels,  originalPixelsPitch, h_originalPixels, srcPitch, imgWidth, imgHeight, cudaMemcpyHostToDevice) ); 
+	CUDA_CHECK( cudaMemcpy2D(    d_originalPixels,  originalPixelsPitch, h_originalPixels, srcPitch, srcPitch, imgHeight, cudaMemcpyHostToDevice) );
 
 	const textureReference *refImg = NULL, *currImg = NULL;
 	getTextureReferences(&refImg, &currImg);
@@ -192,7 +190,7 @@ int main(int argc, char *argv[])
 		// Render initial solution
 		launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore);
 		CUDA_CHECK( cudaBindTexture2D(&offset, currImg, d_currentPixels, &channelDesc, imgWidth, imgHeight, originalPixelsPitch) );
-		CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(int32_t), cudaMemcpyDeviceToHost) );
+		CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 
 		// check that this isn't a regression, revert and pick new K if so
 		if (currentScore * (1.0 - 2.0 / kEvoMaxTriangleCount) > bestScore)
@@ -202,7 +200,7 @@ int main(int argc, char *argv[])
 			currentTriangleIndex = (int32_t)( randf() * min(iIter/2, kEvoMaxTriangleCount) );
 			CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(int32_t), cudaMemcpyHostToDevice) );
 			launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore);
-			CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(int32_t), cudaMemcpyDeviceToHost) );
+			CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 		}
 		// texturize current solution
 		CUDA_CHECK( cudaBindTexture2D(&offset, currImg, d_currentPixels, &channelDesc, imgWidth, imgHeight, originalPixelsPitch) );
@@ -252,7 +250,7 @@ int main(int argc, char *argv[])
 			currentTriangleIndex = -1;
 			CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(uint32_t), cudaMemcpyHostToDevice) );
 			launch_renderproof(d_scaledOutputPixels, d_currentTriangles);
-			CUDA_CHECK( cudaMemcpy2D(h_scaledOutputPixels,  kEvoOutputScale*srcPitch, d_scaledOutputPixels, scaledPixelsPitch, kEvoOutputScale*imgWidth, kEvoOutputScale*imgHeight, cudaMemcpyDeviceToHost) ); 
+			CUDA_CHECK( cudaMemcpy2D(h_scaledOutputPixels,  kEvoOutputScale*srcPitch, d_scaledOutputPixels, scaledPixelsPitch, kEvoOutputScale*srcPitch, kEvoOutputScale*imgHeight, cudaMemcpyDeviceToHost) );
 			// Convert to RGBA8888 for output
 			for(int32_t iPixel=0; iPixel<kEvoOutputScale*imgWidth*kEvoOutputScale*imgHeight; ++iPixel)
 			{
