@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
 			bestScore = currentScore;
 		}
 		// Print output
-		printf("Iteration %4d: score = %.4f\n", iIter, currentScore);
+		printf("Iteration %4d: score = %.4f [best = %.4f]\n", iIter, currentScore, bestScore);
 
 		// Update solution (tentatively)
 		h_oldTriangles = h_currentTriangles;
