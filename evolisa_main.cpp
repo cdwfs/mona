@@ -97,8 +97,6 @@ int main(int argc, char *argv[])
 			printf("Error loading input image '%s': %s\n", inputImageFileName, stbi_failure_reason());
 			return -1;
 		}
-		ZOMBOLITE_ASSERT_RETURN(imgWidth == (int)kEvoImageWidth && imgHeight == (int)kEvoImageHeight, -1,
-			"%s is %dx%d; for now, dimensions must be %dx%d", imgWidth, imgHeight, (int)kEvoImageWidth, (int)kEvoImageHeight);
 	}
 	// Convert to F32x4, as expected by the CUDA code.
 	rgba *h_originalPixels = (rgba*)malloc(imgWidth*imgHeight*sizeof(rgba));
