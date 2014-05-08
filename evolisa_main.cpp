@@ -190,10 +190,10 @@ int main(int argc, char *argv[])
 		CUDA_CHECK( cudaBindTexture2D(&offset, currImg, d_currentPixels, &channelDesc, imgWidth, imgHeight, originalPixelsPitch) );
 		CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 
-		// check that this isn't a regression, revert and pick new K if so
+		// check that this isn't a huge regression, revert and pick new K if so
 		if (currentScore * (1.0 - 2.0 / kEvoMaxTriangleCount) > bestScore)
 		{
-			h_currentTriangles = h_oldTriangles;
+			memcpy(h_currentTriangles, h_oldTriangles, kEvoMaxTriangleCount*sizeof(triangle));
 			CUDA_CHECK( cudaMemcpy(d_currentTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
 			currentTriangleIndex = (int32_t)( randf() * min(iIter/2, kEvoMaxTriangleCount) );
 			CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(int32_t), cudaMemcpyHostToDevice) );
@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
 		printf("Iteration %4d: score = %.4f [best = %.4f]\n", iIter, currentScore, bestScore);
 
 		// Update solution (tentatively)
-		h_oldTriangles = h_currentTriangles;
+		memcpy(h_oldTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle));
 
 		// Visual output
 		if ((iIter % 100) == 0)
