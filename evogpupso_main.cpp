@@ -2,7 +2,7 @@
 // CS264 Final Project 2009
 // by Drew Robb & Joy Ding
 
-#include "evolisa.h"
+#include "evogpupso.h"
 
 #include "utils.h"
 #include "stb_image.h"

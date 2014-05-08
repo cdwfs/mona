@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{7F163BBF-8E95-4FE4-A4DF-B72A35CE4055}") = "evolisa", "evolisa.vcxproj", "{9C493947-1E95-44C2-9508-F4A2939FBE4D}"
+Project("{7F163BBF-8E95-4FE4-A4DF-B72A35CE4055}") = "evogpupso", "evogpupso.vcxproj", "{9C493947-1E95-44C2-9508-F4A2939FBE4D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

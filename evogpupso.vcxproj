@@ -17,7 +17,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{9C493947-1E95-44C2-9508-F4A2939FBE4D}</ProjectGuid>
     <RootNamespace>GP3212</RootNamespace>
-    <ProjectName>evolisa</ProjectName>
+    <ProjectName>evogpupso</ProjectName>
     <CudaToolkitCustomDir />
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -107,13 +107,13 @@
     </CudaCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="evolisa.h" />
+    <ClInclude Include="evogpupso.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="stb_image_write.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="evolisa_main.cpp" />
+    <ClCompile Include="evogpupso_main.cpp" />
     <ClCompile Include="stb_image.c" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
