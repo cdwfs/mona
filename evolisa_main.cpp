@@ -86,13 +86,13 @@ int main(int argc, char *argv[])
 	// rm ./temp_images/*
 
 	// Load input image
-	const uint32_t *h_inputPixels = NULL;
+	const uint32_t *inputPixels = NULL;
 	int imgWidth = -1, imgHeight = -1, imgNumComp = -1;
 	{
 		const char *inputImageFileName = argv[1];
 		printf("Loading '%s'...\n", inputImageFileName);
-		h_inputPixels = (const uint32_t*)stbi_load(inputImageFileName, &imgWidth, &imgHeight, &imgNumComp, 4);
-		if (h_inputPixels == NULL)
+		inputPixels = (const uint32_t*)stbi_load(inputImageFileName, &imgWidth, &imgHeight, &imgNumComp, 4);
+		if (inputPixels == NULL)
 		{
 			printf("Error loading input image '%s': %s\n", inputImageFileName, stbi_failure_reason());
 			return -1;
@@ -104,10 +104,10 @@ int main(int argc, char *argv[])
 	rgba *h_originalPixels = (rgba*)malloc(imgWidth*imgHeight*sizeof(rgba));
 	for(int32_t iPixel=0; iPixel<imgWidth*imgHeight; ++iPixel)
 	{
-		h_originalPixels[iPixel].r = (float)((h_inputPixels[iPixel] >>  0) & 0xFF) / 255.0f;
-		h_originalPixels[iPixel].g = (float)((h_inputPixels[iPixel] >>  8) & 0xFF) / 255.0f;
-		h_originalPixels[iPixel].b = (float)((h_inputPixels[iPixel] >> 16) & 0xFF) / 255.0f;
-		h_originalPixels[iPixel].a = (float)((h_inputPixels[iPixel] >> 24) & 0xFF) / 255.0f;
+		h_originalPixels[iPixel].r = (float)((inputPixels[iPixel] >>  0) & 0xFF) / 255.0f;
+		h_originalPixels[iPixel].g = (float)((inputPixels[iPixel] >>  8) & 0xFF) / 255.0f;
+		h_originalPixels[iPixel].b = (float)((inputPixels[iPixel] >> 16) & 0xFF) / 255.0f;
+		h_originalPixels[iPixel].a = (float)((inputPixels[iPixel] >> 24) & 0xFF) / 255.0f;
 	}
 	// Upload to GPU
 	rgba *d_originalPixels = NULL; // Goim
@@ -278,6 +278,6 @@ int main(int argc, char *argv[])
 
 	}
 
-	free((void*)h_inputPixels);
+	free((void*)inputPixels);
 	cudaDeviceReset();
 }
