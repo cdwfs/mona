@@ -154,3 +154,8 @@ private:
 	bool m_isRunning; ///< False if the timer is paused/stopped
 	// TODO: 4 bytes of padding here...
 };
+
+/**
+ * @brief Converts a CUDA major/minor version to the number of CUDA cores per MP.
+ */
+int _ConvertSMVer2Cores(int major, int minor);

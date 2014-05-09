@@ -76,6 +76,22 @@ int main(int argc, char *argv[])
 	const int deviceId = 0;
 	CUDA_CHECK( cudaSetDevice(deviceId) );
 
+	cudaDeviceProp deviceProps;
+	CUDA_CHECK( cudaGetDeviceProperties(&deviceProps, deviceId) );
+	const int32_t deviceMpCount = deviceProps.multiProcessorCount;
+	const int32_t deviceCudaCoresPerMp = _ConvertSMVer2Cores(deviceProps.major, deviceProps.minor);
+
+	printf("%s (%d MPs, %d cores/MP -> %d CUDA cores\n\n", deviceProps.name, deviceMpCount, deviceCudaCoresPerMp, deviceMpCount*deviceCudaCoresPerMp);
+
+	// Each PSO thread block processes one PSO particle. It would be wasteful to simulate fewer particles than the GPU can support at full occupancy!
+	// Compute maximum number of PSO thread blocks per MP
+	const int32_t deviceMaxPsoBlocksPerMp = deviceProps.maxThreadsPerMultiProcessor / (kEvoBlockDim*kEvoBlockDim);
+	// Launch 4x as many blocks as the GPU can support, to make sure it's fully saturated.
+	//  - TODO: Actually use this value.
+	//  - TODO: The PSO neighborhood size should be based on this value as well.
+	const int32_t kEvoPsoGridDim = 4 * deviceMpCount * deviceMaxPsoBlocksPerMp;
+	(void)kEvoPsoGridDim;
+
 	if (argc != 2)
 	{
 		printf("Usage: %s in.???\n", argv[0]);
