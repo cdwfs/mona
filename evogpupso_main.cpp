@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
 	CUDA_CHECK( cudaMalloc(&d_psoParticlesNhoodBestFit, kEvoPsoParticleCount*sizeof(float)) );
 	CUDA_CHECK( cudaMalloc(&d_psoParticlesGlobalBestFit, sizeof(float)) );
 
-	for(int32_t iIter=0; iIter<kEvoIterationCount; ++iIter)
+	for(int32_t iIter=1; iIter<=kEvoIterationCount; ++iIter)
 	{
 		// Copy current solution back to host (why?)
 		CUDA_CHECK( cudaMemcpy(h_currentTriangles, d_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToHost) );
