@@ -132,7 +132,7 @@ inline   __device__  void addtriangle(rgba * im, triangle * T, bool add, int img
 
 	// shade second half of triangle
 	for(int yy = h2 + threadIdx.y; yy < h3; yy += kEvoBlockDim) {
-		for(int i = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y2 + 1), 0, (float)imgHeight); 
+		for(int i = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y2 + 1), 0, (float)imgWidth);
 			i < clip(xt + m2 * (yy - imgHeight * y2 + 1), 0, (float)imgWidth); i += kEvoBlockDim) {
 			int g = imgPitch * yy + i;
 			im[g].r += TT.c.r;
