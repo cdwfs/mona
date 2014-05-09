@@ -13,6 +13,8 @@ particle swarm optimization instead of Alsing's naive random-walk. Robb & Ding's
 [link? -ed] was designed to be launched from Python from a Linux host, so my first step
 has been adapting the code to C++. From there I intend to profile and optimize the kernels.
 
+![image](https://raw.githubusercontent.com/cdwfs/evogpupso/master/lisa.gif)
+
 *5/8/2014:*
  - First successful run. Results are definitely not matching those described by Robb & Ding
    in their paper; the approximation does converge to a point, but seems to quickly hit a
