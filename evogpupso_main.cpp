@@ -126,7 +126,8 @@ int main(int argc, char *argv[])
 	triangle *d_currentTriangles = NULL; // Gcurr
 	CUDA_CHECK( cudaMalloc(&d_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle)) );
 	CUDA_CHECK( cudaMemset(d_currentTriangles, 0, kEvoMaxTriangleCount*sizeof(triangle)) );
-	triangle *h_oldTriangles = h_currentTriangles; // oldCurr
+	triangle *h_oldTriangles = (triangle*)malloc(kEvoMaxTriangleCount*sizeof(triangle)); // oldCurr
+	memcpy(h_oldTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle));
 
 	// Rendered solution on the GPU (and scaled-up version for final output)
 	rgba *d_currentPixels = NULL; // Gim
