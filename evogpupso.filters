@@ -9,10 +9,10 @@
     <ClCompile Include="stb_image.c">
       <Filter>boilerplate</Filter>
     </ClCompile>
-    <ClCompile Include="evolisa_main.cpp" />
     <ClCompile Include="utils.cpp">
       <Filter>boilerplate</Filter>
     </ClCompile>
+    <ClCompile Include="evogpupso_main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="utils.h">
@@ -24,7 +24,7 @@
     <ClInclude Include="stb_image_write.h">
       <Filter>boilerplate</Filter>
     </ClInclude>
-    <ClInclude Include="evolisa.h" />
+    <ClInclude Include="evogpupso.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="evo.cu" />
