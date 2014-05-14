@@ -285,7 +285,7 @@ __global__ void run(triangle * curr,   //D (triangles)
 			float * p = (((float *) &pos[blockIdx.x]) + threadIdx.x);
 			float * l = (((float *) &lbest[blockIdx.x]) + threadIdx.x);
 			float * n = (((float *) &nbest[blockIdx.x]) + threadIdx.x);
-			*v *= .85f; // damping constant?
+			*v *= kEvoPsoDampeningFactor;
 			*v += kEvoPsoSpringConstant * rand() * (*n - *p);
 			*v += kEvoPsoSpringConstant * rand() * (*l - *p);
 			*v = max(*v, vmin);
