@@ -3,19 +3,18 @@ EvoGpuPso
 *(I pronounce it "EE-vawg PUP-soe")*
 
 This is me trying to write an efficient (near-realtime, ideally!) implementation
-of triangle-based image approximation, as popularized by Roger Alsing's EvoLisa project
-(http://rogeralsing.com/2008/12/07/genetic-programming-evolution-of-mona-lisa/). The general
-idea is to find a relatively small set of overlapping, flat-shaded, semi-transparent triangles
-that best approximates a given image. The results are impressive; usually only a few hundred
+of triangle-based image approximation, as popularized by Roger Alsing's
+[EvoLisa](http://rogeralsing.com/2008/12/07/genetic-programming-evolution-of-mona-lisa/) project.
+The general idea is to find a relatively small set of overlapping, flat-shaded, semi-transparent
+triangles that best approximates a given image. The results are impressive; usually only a few hundred
 triangles are necessary. Roger's original code was written in C# (!!!) and performed all
 processing in a single CPU thread (!!!) using GDI for rendering (!!!!!). Its results are
 impressive, but convergence can take *days*.
 
 I'd like to think that I could do better.
 
-I'm starting from an existing CUDA implementation by Drew Robb and Joy Ding
-(http://isites.harvard.edu/fs/docs/icb.topic707165.files/pdfs/Ding_Robb.pdf), which uses
-particle swarm optimization instead of Alsing's naive random-walk. Robb & Ding's code
+I'm starting from an existing CUDA implementation by [Drew Robb and Joy Ding](http://isites.harvard.edu/fs/docs/icb.topic707165.files/pdfs/Ding_Robb.pdf),
+which uses particle swarm optimization instead of Alsing's naive random-walk. Robb & Ding's code
 [link? -ed] was designed to be launched from Python from a Linux host, so my first step
 has been adapting the code to C++. From there I intend to profile and optimize the kernels.
 
@@ -25,6 +24,8 @@ evolve on my laptop's 650M (but was effectively stable after 1200 iterations in 
 
 ![image](https://raw.githubusercontent.com/cdwfs/evogpupso/master/lisa.gif)
 
+Change Log
+----------
  - 5/13/2014: I took a quick stupid-obvious-optimizations pass over the kernels. I hoisting some loop
    invariants, converted double-precision literals to single-precision, and inserted explicit fused
    multiply-adds where appropriate. Collectively, this made everything run about 4x faster. Along the way
@@ -44,3 +45,10 @@ evolve on my laptop's 650M (but was effectively stable after 1200 iterations in 
  - 5/8/2014: First successful run. Results are definitely not matching those described by Robb & Ding
    in their paper; the approximation does converge to a point, but seems to quickly hit a
    brick wall.
+
+Acknowledgements
+----------------
+Much thanks to:
+ - Roger Alsing for the original EvoLisa algorithm.
+ - Drew Robb and Joy Ding for their CUDA implementation of PSO EvoLisa, and accompanying paper.
+ - [Sean Barrett](http://nothings.org/) for stb_image and stb_image_write
