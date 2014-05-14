@@ -3,7 +3,7 @@
 #include <vector_types.h>
 
 #define kEvoIterationCount 2000       // Iteration count of main loop
-#define kEvoAlphaLimit 0.1            // alpha limit for images
+#define kEvoAlphaLimit 0.1f            // alpha limit for images
 #define kEvoAlphaOffset (kEvoAlphaLimit/2) //alpha offset
 #define kEvoCheckLimit 150 //number of times we have a non-improving value before we terminate
 #define kEvoOutputScale 2 //the factor by which we would like to scale up the image in the final render
