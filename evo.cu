@@ -285,7 +285,7 @@ __global__ void run(triangle * curr,   //D (triangles)
 			float * p = (((float *) &pos[blockIdx.x]) + threadIdx.x);
 			float * l = (((float *) &lbest[blockIdx.x]) + threadIdx.x);
 			float * n = (((float *) &nbest[blockIdx.x]) + threadIdx.x);
-			*v *= .85f;
+			*v *= .85f; // damping constant?
 			*v += kEvoPsoSpringConstant * rand() * (*n - *p);
 			*v += kEvoPsoSpringConstant * rand() * (*l - *p);
 			*v = max(*v, vmin);
@@ -334,7 +334,7 @@ __global__ void run(triangle * curr,   //D (triangles)
 				nbval[blockIdx.x] = v;
 				nbest[blockIdx.x] = lbest[b % kEvoPsoParticleCount];
 			}	
-			// hack to improve early PSO convergence
+			// hack to improve early PSO convergence (is this D&R's "local best reduction"?)
 			else if(lbval[blockIdx.x] > 0) 
 				nbval[blockIdx.x] *= 1.1f;
 
