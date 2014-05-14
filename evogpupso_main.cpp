@@ -34,7 +34,7 @@ static inline float randf(void)
 	return (float)( (float)rand() / (float)RAND_MAX );
 }
 
-void randomizeTrianglePos(triangle *tri)
+static void randomizeTrianglePos(triangle *tri)
 {
 	tri->x1 = randf();
 	tri->y1 = randf();
@@ -48,7 +48,7 @@ void randomizeTrianglePos(triangle *tri)
 	tri->c.w = randf();
 }
 
-void randomizeTriangleVel(triangle *tri)
+static void randomizeTriangleVel(triangle *tri)
 {
 	tri->x1 = randf() * 2.0f - 1.0f;
 	tri->y1 = randf() * 2.0f - 1.0f;
@@ -193,6 +193,8 @@ int main(int argc, char *argv[])
 	CUDA_CHECK( cudaMalloc(&d_psoParticlesNhoodBestFit, kEvoPsoParticleCount*sizeof(float)) );
 	CUDA_CHECK( cudaMalloc(&d_psoParticlesGlobalBestFit, sizeof(float)) );
 
+	CpuTimer cpuTimer;
+	cpuTimer.Start();
 	for(int32_t iIter=1; iIter<=kEvoIterationCount; ++iIter)
 	{
 		// Copy current solution back to host (why?)
@@ -254,7 +256,8 @@ int main(int argc, char *argv[])
 			bestScore = currentScore;
 		}
 		// Print output
-		printf("Iteration %4d: score = %.4f [best = %.4f]\n", iIter, currentScore, bestScore);
+		cpuTimer.Update();
+		printf("%7.2fs (gen %4d): score = %.4f [best = %.4f]\n", cpuTimer.GetElapsedSeconds(), iIter, currentScore, bestScore);
 
 		// Update solution (tentatively)
 		memcpy(h_oldTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle));
