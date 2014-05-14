@@ -38,7 +38,7 @@ texture<float4, cudaTextureType2D, cudaReadModeElementType> refimg; // original 
 
 
 // adds a triangle to the working image, or subtracts it if add==0
-inline   __device__  void addtriangle(rgba * im, triangle * T, bool add, int imgWidth, int imgHeight, int imgPitch)
+inline   __device__  void addtriangle(float4 * im, triangle * T, bool add, int imgWidth, int imgHeight, int imgPitch)
 {
 	//intializes shared memory
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
@@ -47,21 +47,21 @@ inline   __device__  void addtriangle(rgba * im, triangle * T, bool add, int img
 	triangle TT = *T;
 
 	//clip color values to valid range
-	TT.c.r = clip(TT.c.r, 0.0, 1.0);
-	TT.c.g = clip(TT.c.g, 0.0, 1.0);
-	TT.c.b = clip(TT.c.b, 0.0, 1.0);
+	TT.c.x = clip(TT.c.x, 0.0, 1.0);
+	TT.c.y = clip(TT.c.y, 0.0, 1.0);
+	TT.c.z = clip(TT.c.z, 0.0, 1.0);
 
 	//if we are subtracting the triangle, set values to -1
 	if(add == 0) {
-		TT.c.r *= -1;
-		TT.c.g *= -1;
-		TT.c.b *= -1;
+		TT.c.x *= -1;
+		TT.c.y *= -1;
+		TT.c.z *= -1;
 	}
 	
 	//set to alpha values that we are using 
-	TT.c.r = kEvoAlphaLimit * TT.c.r - kEvoAlphaOffset;
-	TT.c.g = kEvoAlphaLimit * TT.c.g - kEvoAlphaOffset;
-	TT.c.b = kEvoAlphaLimit * TT.c.b - kEvoAlphaOffset;
+	TT.c.x = kEvoAlphaLimit * TT.c.x - kEvoAlphaOffset;
+	TT.c.y = kEvoAlphaLimit * TT.c.y - kEvoAlphaOffset;
+	TT.c.z = kEvoAlphaLimit * TT.c.z - kEvoAlphaOffset;
 	
 	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value so that we can render triangles properly
@@ -113,9 +113,9 @@ inline   __device__  void addtriangle(rgba * im, triangle * T, bool add, int img
 		for(int i = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y1), 0.0, (float)imgWidth); 
 			i < clip(xt + m2 * (yy - imgHeight * y1), 0.0, (float)imgWidth); i += kEvoBlockDim) {
 			int g = imgPitch * yy + i;
-			im[g].r += TT.c.r;
-			im[g].g += TT.c.g;
-			im[g].b += TT.c.b;
+			im[g].x += TT.c.x;
+			im[g].y += TT.c.y;
+			im[g].z += TT.c.z;
 		}
 
 	}
@@ -135,9 +135,9 @@ inline   __device__  void addtriangle(rgba * im, triangle * T, bool add, int img
 		for(int i = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y2 + 1), 0, (float)imgWidth);
 			i < clip(xt + m2 * (yy - imgHeight * y2 + 1), 0, (float)imgWidth); i += kEvoBlockDim) {
 			int g = imgPitch * yy + i;
-			im[g].r += TT.c.r;
-			im[g].g += TT.c.g;
-			im[g].b += TT.c.b;
+			im[g].x += TT.c.x;
+			im[g].y += TT.c.y;
+			im[g].z += TT.c.z;
 		}
 	}
 }
@@ -151,12 +151,12 @@ inline   __device__  void scoretriangle(float * sum, triangle * T, int imgWidth,
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
 	__shared__ int h1,h2,h3,swap,bad;
 	triangle TT = *T;
-	TT.c.r = clip(TT.c.r, 0.0, 1.0);
-	TT.c.g = clip(TT.c.g, 0.0, 1.0);
-	TT.c.b = clip(TT.c.b, 0.0, 1.0);
-	TT.c.r = kEvoAlphaLimit * TT.c.r - kEvoAlphaOffset;
-	TT.c.g = kEvoAlphaLimit * TT.c.g - kEvoAlphaOffset;
-	TT.c.b = kEvoAlphaLimit * TT.c.b - kEvoAlphaOffset;
+	TT.c.x = clip(TT.c.x, 0.0, 1.0);
+	TT.c.y = clip(TT.c.y, 0.0, 1.0);
+	TT.c.z = clip(TT.c.z, 0.0, 1.0);
+	TT.c.x = kEvoAlphaLimit * TT.c.x - kEvoAlphaOffset;
+	TT.c.y = kEvoAlphaLimit * TT.c.y - kEvoAlphaOffset;
+	TT.c.z = kEvoAlphaLimit * TT.c.z - kEvoAlphaOffset;
 	
 	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value, yes, this is retarded
@@ -207,12 +207,12 @@ inline   __device__  void scoretriangle(float * sum, triangle * T, int imgWidth,
 		for(int i = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y1), 0.0, (float)imgWidth); 
 			i < clip(xt + m2 * (yy - imgHeight * y1 ), 0.0, (float)imgWidth); i += kEvoBlockDim) {
 
-			rgba o = tex2D(currimg, i, yy) - tex2D(refimg, i, yy);
-			localsum -= o.r * o.r + o.g * o.g + o.b * o.b + 
-				(RL * o.r + GL * o.g + BL * o.b) * (RL * o.r + GL * o.g + BL * o.b);
-			o.r += TT.c.r; o.g += TT.c.g; o.b += TT.c.b;
-			localsum += o.r * o.r + o.g * o.g + o.b * o.b + 
-				(RL * o.r + GL * o.g + BL * o.b) * (RL * o.r + GL * o.g + BL * o.b);
+			float4 o = tex2D(currimg, i, yy) - tex2D(refimg, i, yy);
+			localsum -= o.x * o.x + o.y * o.y + o.z * o.z +
+				(RL * o.x + GL * o.y + BL * o.z) * (RL * o.x + GL * o.y + BL * o.z);
+			o.x += TT.c.x; o.y += TT.c.y; o.z += TT.c.z;
+			localsum += o.x * o.x + o.y * o.y + o.z * o.z +
+				(RL * o.x + GL * o.y + BL * o.z) * (RL * o.x + GL * o.y + BL * o.z);
 		}
 	}
 	
@@ -231,12 +231,12 @@ inline   __device__  void scoretriangle(float * sum, triangle * T, int imgWidth,
 		for(int i = threadIdx.x + clip(threadIdx.x + xs + m1 * (yy - imgHeight * y2 + 1), 0, (float)imgWidth);
 			i < clip(xt + m2 * (yy - imgHeight * y2 + 1), 0, (float)imgWidth); i += kEvoBlockDim) {
 
-			rgba o = tex2D(currimg, i, yy) - tex2D(refimg, i, yy);
-			localsum -= o.r * o.r + o.g * o.g + o.b * o.b + 
-				(RL * o.r + GL * o.g + BL * o.b) * (RL * o.r + GL * o.g + BL * o.b);
-			o.r += TT.c.r; o.g += TT.c.g; o.b += TT.c.b;
-			localsum += o.r * o.r + o.g * o.g + o.b * o.b + 
-				(RL * o.r + GL * o.g + BL * o.b) * (RL * o.r + GL * o.g + BL * o.b);	
+			float4 o = tex2D(currimg, i, yy) - tex2D(refimg, i, yy);
+			localsum -= o.x * o.x + o.y * o.y + o.z * o.z +
+				(RL * o.x + GL * o.y + BL * o.z) * (RL * o.x + GL * o.y + BL * o.z);
+			o.x += TT.c.x; o.y += TT.c.y; o.z += TT.c.z;
+			localsum += o.x * o.x + o.y * o.y + o.z * o.z +
+				(RL * o.x + GL * o.y + BL * o.z) * (RL * o.x + GL * o.y + BL * o.z);	
 		}
 	}
 	__shared__ float sums[kEvoBlockDim];
@@ -347,7 +347,7 @@ __global__ void run(triangle * curr,   //D (triangles)
 
 
 // renders and scores an image
-__global__ void render(rgba * im,
+__global__ void render(float4 * im,
 					   triangle * curr,
 					   int * K,
 					   float * score,
@@ -359,9 +359,9 @@ __global__ void render(rgba * im,
 	for(int y = threadIdx.y; y < imgHeight; y += kEvoBlockDim) {
 		for(int i = threadIdx.x; i < imgWidth; i += kEvoBlockDim) {
 			int g = y * imgPitch + i;
-			im[g].r = 0.0;
-			im[g].g = 0.0;
-			im[g].b = 0.0;
+			im[g].x = 0.0;
+			im[g].y = 0.0;
+			im[g].z = 0.0;
 		}
 	}
 	// render all triangles
@@ -374,11 +374,11 @@ __global__ void render(rgba * im,
 	for(int yy = threadIdx.y; yy < imgHeight; yy+=kEvoBlockDim) {
 		for(int i = threadIdx.x; i < imgWidth; i += kEvoBlockDim) {
 			int g = yy * imgPitch + i;
-			rgba o = tex2D(refimg, i, yy);
-			o.r -= im[g].r; o.g -= im[g].g; o.b -= im[g].b;
-			sums[kEvoBlockDim*threadIdx.y+threadIdx.x] += o.r * o.r + o.g * o.g + o.b * o.b + 
-				(RL * o.r + GL * o.g + BL * o.b) * 
-				(RL * o.r + GL * o.g + BL * o.b);
+			float4 o = tex2D(refimg, i, yy);
+			o.x -= im[g].x; o.y -= im[g].y; o.z -= im[g].z;
+			sums[kEvoBlockDim*threadIdx.y+threadIdx.x] += o.x * o.x + o.y * o.y + o.z * o.z + 
+				(RL * o.x + GL * o.y + BL * o.z) * 
+				(RL * o.x + GL * o.y + BL * o.z);
 		}
 	}
 	__syncthreads();
@@ -397,16 +397,16 @@ __global__ void render(rgba * im,
 
 
 // similar to addtriangle function, but for output. Not worth looking at...
-inline   __device__  void addtriangleproof(rgba * im, triangle * T, int imgWidth, int imgHeight, int imgPitch)
+inline   __device__  void addtriangleproof(float4 * im, triangle * T, int imgWidth, int imgHeight, int imgPitch)
 {
 	//sort points by y value, yes, this is retarded
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
 	__shared__ int h1,h2,h3,swap,bad;
 	if(threadIdx.x+threadIdx.y==0) {
-		T->c.a = clip(T->c.a, 0.0, 1.0);
-		T->c.r = clip(T->c.r, 0.0, 1.0);
-		T->c.g = clip(T->c.g, 0.0, 1.0);
-		T->c.b = clip(T->c.b, 0.0, 1.0);
+		T->c.w = clip(T->c.w, 0.0, 1.0);
+		T->c.x = clip(T->c.x, 0.0, 1.0);
+		T->c.y = clip(T->c.y, 0.0, 1.0);
+		T->c.z = clip(T->c.z, 0.0, 1.0);
 		bad = 0;
 		if     (T->y1 < T->y2 && T->y2 < T->y3) {
 			x1 = T->x1; y1 = T->y1; x2 = T->x2; y2 = T->y2; x3 = T->x3; y3 = T->y3;
@@ -448,9 +448,9 @@ inline   __device__  void addtriangleproof(rgba * im, triangle * T, int imgWidth
 			if(i > imgWidth || i < 0) continue;
 			int g = imgPitch * yy + i;
 
-			im[g].r += (kEvoAlphaLimit * T->c.r - kEvoAlphaOffset);
-			im[g].g += (kEvoAlphaLimit * T->c.g - kEvoAlphaOffset);
-			im[g].b += (kEvoAlphaLimit * T->c.b - kEvoAlphaOffset);
+			im[g].x += (kEvoAlphaLimit * T->c.x - kEvoAlphaOffset);
+			im[g].y += (kEvoAlphaLimit * T->c.y - kEvoAlphaOffset);
+			im[g].z += (kEvoAlphaLimit * T->c.z - kEvoAlphaOffset);
 
 		}
 
@@ -469,9 +469,9 @@ inline   __device__  void addtriangleproof(rgba * im, triangle * T, int imgWidth
 			i < clip(xt + m2 * (yy - imgHeight * y2 + 1), 0, imgWidth); i += kEvoBlockDim) {
 			if(i > imgWidth || i < 0) continue;
 			int g = imgPitch * yy + i;
-			im[g].r += (kEvoAlphaLimit * T->c.r - kEvoAlphaOffset);
-			im[g].g += (kEvoAlphaLimit * T->c.g - kEvoAlphaOffset);
-			im[g].b += (kEvoAlphaLimit * T->c.b - kEvoAlphaOffset);
+			im[g].x += (kEvoAlphaLimit * T->c.x - kEvoAlphaOffset);
+			im[g].y += (kEvoAlphaLimit * T->c.y - kEvoAlphaOffset);
+			im[g].z += (kEvoAlphaLimit * T->c.z - kEvoAlphaOffset);
 
 		}
 	}
@@ -479,16 +479,16 @@ inline   __device__  void addtriangleproof(rgba * im, triangle * T, int imgWidth
 }
 
 // similar to render, but for output. Also not worth looking at.
-__global__ void renderproof(rgba * im,
+__global__ void renderproof(float4 * im,
 					   triangle * curr, int imgWidth, int imgHeight, int imgPitch) {
 #if 1
 	for(int y = threadIdx.y; y < imgHeight; y += kEvoBlockDim) {
 		for(int i = threadIdx.x; i < imgWidth; i += kEvoBlockDim) {
 			int g = y * imgPitch + i;
-			im[g].r = 0.0;
-			im[g].g = 0.0;
-			im[g].b = 0.0;
-			im[g].a = 1.0;
+			im[g].x = 0.0;
+			im[g].y = 0.0;
+			im[g].z = 0.0;
+			im[g].w = 1.0;
 		}
 	}
 	for(int k = 0; k < kEvoMaxTriangleCount; k++)
@@ -497,21 +497,21 @@ __global__ void renderproof(rgba * im,
 	for(int yy = threadIdx.y; yy < imgHeight; yy+=kEvoBlockDim) {
 		for(int i = threadIdx.x; i < imgWidth; i += kEvoBlockDim) {
 			int g = yy * imgPitch + i;
-			im[g].r = clip(im[g].r,0.0,1.0);
-			im[g].g = clip(im[g].g,0.0,1.0);
-			im[g].b = clip(im[g].b,0.0,1.0);
-			im[g].a = 1.0;
+			im[g].x = clip(im[g].x,0.0,1.0);
+			im[g].y = clip(im[g].y,0.0,1.0);
+			im[g].z = clip(im[g].z,0.0,1.0);
+			im[g].w = 1.0;
 		}
 	}
 #else
 	for(int y = threadIdx.y; y < imgHeight; y += kEvoBlockDim) {
 		for(int i = threadIdx.x; i < imgWidth; i += kEvoBlockDim) {
 			int g = y * imgPitch + i;
-			rgba o = tex2D(refimg, i, y);
-			im[g].r = o.r;
-			im[g].g = o.g;
-			im[g].b = o.b;
-			im[g].a = o.a;
+			float4 o = tex2D(refimg, i, y);
+			im[g].x = o.x;
+			im[g].y = o.y;
+			im[g].z = o.z;
+			im[g].w = o.w;
 		}
 	}
 #endif
@@ -523,7 +523,7 @@ void getTextureReferences(const textureReference **outRefImg, const textureRefer
 	CUDA_CHECK( cudaGetTextureReference(outCurrImg, &currimg) );
 }
 
-void launch_render(rgba *d_im, triangle *d_curr, int *d_currentTriangleIndex, float *d_currentScore, int imgWidth, int imgHeight, int imgPitch)
+void launch_render(float4 *d_im, triangle *d_curr, int *d_currentTriangleIndex, float *d_currentScore, int imgWidth, int imgHeight, int imgPitch)
 {
 	dim3 gridDim(1,1);
 	dim3 blockDim(kEvoBlockDim, kEvoBlockDim);
@@ -531,7 +531,7 @@ void launch_render(rgba *d_im, triangle *d_curr, int *d_currentTriangleIndex, fl
 	CUDA_CHECK( cudaGetLastError() );
 }
 
-void launch_renderproof(rgba * d_im, triangle * d_curr, int imgWidth, int imgHeight, int imgPitch)
+void launch_renderproof(float4 * d_im, triangle * d_curr, int imgWidth, int imgHeight, int imgPitch)
 {
 	dim3 gridDim(1,1);
 	dim3 blockDim(kEvoBlockDim, kEvoBlockDim);

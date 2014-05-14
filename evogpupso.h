@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector_types.h>
+
 #define kEvoIterationCount 2000       // Iteration count of main loop
 #define kEvoAlphaLimit 0.1            // alpha limit for images
 #define kEvoAlphaOffset (kEvoAlphaLimit/2) //alpha offset
@@ -11,25 +13,6 @@
 #define kEvoMaxTriangleCount 800 // number of triangles to render (max)
 #define kEvoPsoNeighborhoodSize 24 // Size of neighbhorhood (PSO topology)
 
-//rgb class! initialized with float4's from our texture memory
-class rgba {
-public:
-	float r;
-	float g;
-	float b;
-	float a;
-#ifdef __CUDACC__
-	__device__ rgba() {
-	}
-	inline __device__ rgba(float4 f) {
-		r = f.x;
-		g = f.y;
-		b = f.z;
-		a = f.w;
-	}
-#endif
-};
-
 //triangle class. stores color/alpha values, as well as coordinates of vertices
 class triangle {
 public:
@@ -39,5 +22,5 @@ public:
 	float y2;
 	float x3;
 	float y3;
-	rgba c;
+	float4 c;
 };

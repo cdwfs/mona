@@ -17,8 +17,8 @@
 
 // From evo.cu
 void getTextureReferences(const textureReference **outRefImg, const textureReference **outCurrImg);
-void launch_render(rgba *d_im, triangle *d_curr, int *d_currentTriangleIndex, float *d_currentScore, int imgWidth, int imgHeight, int imgPitch);
-void launch_renderproof(rgba * d_im, triangle * d_curr, int imgWidth, int imgHeight, int imgPitch);
+void launch_render(float4 *d_im, triangle *d_curr, int *d_currentTriangleIndex, float *d_currentScore, int imgWidth, int imgHeight, int imgPitch);
+void launch_renderproof(float4 * d_im, triangle * d_curr, int imgWidth, int imgHeight, int imgPitch);
 void launch_run(triangle *d_curr, triangle *d_pos, triangle *d_vel, float *d_fit,
 	triangle *d_lbest, float *d_lbval, triangle *d_nbest, float *d_nbval, float *d_gbval,
 	int *d_K, int imgWidth, int imgHeight);
@@ -42,10 +42,10 @@ void randomizeTrianglePos(triangle *tri)
 	tri->y2 = randf();
 	tri->x3 = randf();
 	tri->y3 = randf();
-	tri->c.r = randf();
-	tri->c.g = randf();
-	tri->c.b = randf();
-	tri->c.a = randf();
+	tri->c.x = randf();
+	tri->c.y = randf();
+	tri->c.z = randf();
+	tri->c.w = randf();
 }
 
 void randomizeTriangleVel(triangle *tri)
@@ -56,10 +56,10 @@ void randomizeTriangleVel(triangle *tri)
 	tri->y2 = randf() * 2.0f - 1.0f;
 	tri->x3 = randf() * 2.0f - 1.0f;
 	tri->y3 = randf() * 2.0f - 1.0f;
-	tri->c.r = randf() * 2.0f - 1.0f;
-	tri->c.g = randf() * 2.0f - 1.0f;
-	tri->c.b = randf() * 2.0f - 1.0f;
-	tri->c.a = randf() * 2.0f - 1.0f;
+	tri->c.x = randf() * 2.0f - 1.0f;
+	tri->c.y = randf() * 2.0f - 1.0f;
+	tri->c.z = randf() * 2.0f - 1.0f;
+	tri->c.w = randf() * 2.0f - 1.0f;
 }
 
 
@@ -115,16 +115,16 @@ int main(int argc, char *argv[])
 		}
 	}
 	// Convert to F32x4, as expected by the CUDA code.
-	rgba *h_originalPixels = (rgba*)malloc(imgWidth*imgHeight*sizeof(rgba));
+	float4 *h_originalPixels = (float4*)malloc(imgWidth*imgHeight*sizeof(float4));
 	for(int32_t iPixel=0; iPixel<imgWidth*imgHeight; ++iPixel)
 	{
-		h_originalPixels[iPixel].r = (float)((inputPixels[iPixel] >>  0) & 0xFF) / 255.0f;
-		h_originalPixels[iPixel].g = (float)((inputPixels[iPixel] >>  8) & 0xFF) / 255.0f;
-		h_originalPixels[iPixel].b = (float)((inputPixels[iPixel] >> 16) & 0xFF) / 255.0f;
-		h_originalPixels[iPixel].a = (float)((inputPixels[iPixel] >> 24) & 0xFF) / 255.0f;
+		h_originalPixels[iPixel].x = (float)((inputPixels[iPixel] >>  0) & 0xFF) / 255.0f;
+		h_originalPixels[iPixel].y = (float)((inputPixels[iPixel] >>  8) & 0xFF) / 255.0f;
+		h_originalPixels[iPixel].z = (float)((inputPixels[iPixel] >> 16) & 0xFF) / 255.0f;
+		h_originalPixels[iPixel].w = (float)((inputPixels[iPixel] >> 24) & 0xFF) / 255.0f;
 	}
 	// Upload to GPU
-	rgba *d_originalPixels = NULL; // Goim
+	float4 *d_originalPixels = NULL; // Goim
 	size_t srcPitch = (size_t)imgWidth*sizeof(float4);
 	size_t originalPixelsPitch = 0;
 	CUDA_CHECK( cudaMallocPitch(&d_originalPixels, &originalPixelsPitch,                   srcPitch,           imgHeight) );
@@ -146,14 +146,14 @@ int main(int argc, char *argv[])
 	memcpy(h_oldTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle));
 
 	// Rendered solution on the GPU (and scaled-up version for final output)
-	rgba *d_currentPixels = NULL; // Gim
+	float4 *d_currentPixels = NULL; // Gim
 	CUDA_CHECK( cudaMallocPitch(&d_currentPixels, &originalPixelsPitch,    srcPitch, imgHeight) );
 	CUDA_CHECK( cudaMemset2D(    d_currentPixels,  originalPixelsPitch, 0, srcPitch, imgHeight) );
-	rgba *d_scaledOutputPixels = NULL; // Gim3
+	float4 *d_scaledOutputPixels = NULL; // Gim3
 	size_t scaledPixelsPitch = 0;
 	CUDA_CHECK( cudaMallocPitch(&d_scaledOutputPixels, &scaledPixelsPitch,    kEvoOutputScale*srcPitch, kEvoOutputScale*imgHeight) );
 	CUDA_CHECK( cudaMemset2D(    d_scaledOutputPixels,  scaledPixelsPitch, 0, kEvoOutputScale*srcPitch, kEvoOutputScale*imgHeight) );
-	rgba *h_scaledOutputPixels         = (rgba*)malloc(kEvoOutputScale*imgWidth*kEvoOutputScale*imgHeight*sizeof(rgba));
+	float4 *h_scaledOutputPixels   =   (float4*)malloc(kEvoOutputScale*imgWidth*kEvoOutputScale*imgHeight*sizeof(float4));
 	uint32_t *scaledOutputRgba8888 = (uint32_t*)malloc(kEvoOutputScale*imgWidth*kEvoOutputScale*imgHeight*sizeof(uint32_t));
 
 	// Index of triangle currently being updated
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 		CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(int32_t), cudaMemcpyHostToDevice) );
 
 		// Render initial solution
-		launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore, imgWidth, imgHeight, originalPixelsPitch/sizeof(rgba));
+		launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore, imgWidth, imgHeight, originalPixelsPitch/sizeof(float4));
 		CUDA_CHECK( cudaBindTexture2D(&offset, currImg, d_currentPixels, &channelDesc, imgWidth, imgHeight, originalPixelsPitch) );
 		CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 
@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
 			CUDA_CHECK( cudaMemcpy(d_currentTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
 			currentTriangleIndex = (int32_t)( randf() * min(iIter/2, kEvoMaxTriangleCount) );
 			CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(int32_t), cudaMemcpyHostToDevice) );
-			launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore, imgWidth, imgHeight, originalPixelsPitch/sizeof(rgba));
+			launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore, imgWidth, imgHeight, originalPixelsPitch/sizeof(float4));
 			CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 		}
 		// texturize current solution
@@ -264,16 +264,16 @@ int main(int argc, char *argv[])
 		{
 			currentTriangleIndex = -1;
 			CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(uint32_t), cudaMemcpyHostToDevice) );
-			launch_renderproof(d_scaledOutputPixels, d_currentTriangles, kEvoOutputScale*imgWidth, kEvoOutputScale*imgHeight, scaledPixelsPitch/sizeof(rgba));
+			launch_renderproof(d_scaledOutputPixels, d_currentTriangles, kEvoOutputScale*imgWidth, kEvoOutputScale*imgHeight, scaledPixelsPitch/sizeof(float4));
 			CUDA_CHECK( cudaMemcpy2D(h_scaledOutputPixels,  kEvoOutputScale*srcPitch, d_scaledOutputPixels, scaledPixelsPitch, kEvoOutputScale*srcPitch, kEvoOutputScale*imgHeight, cudaMemcpyDeviceToHost) );
 			// Convert to RGBA8888 for output
 			for(int32_t iPixel=0; iPixel<kEvoOutputScale*imgWidth*kEvoOutputScale*imgHeight; ++iPixel)
 			{
 				scaledOutputRgba8888[iPixel] =
-					( uint32_t(clamp(h_scaledOutputPixels[iPixel].r * 255.0f, 0.0f, 255.0f)) <<  0 ) |
-					( uint32_t(clamp(h_scaledOutputPixels[iPixel].g * 255.0f, 0.0f, 255.0f)) <<  8 ) |
-					( uint32_t(clamp(h_scaledOutputPixels[iPixel].b * 255.0f, 0.0f, 255.0f)) << 16 ) |
-					( uint32_t(clamp(h_scaledOutputPixels[iPixel].a * 255.0f, 0.0f, 255.0f)) << 24 );
+					( uint32_t(clamp(h_scaledOutputPixels[iPixel].x * 255.0f, 0.0f, 255.0f)) <<  0 ) |
+					( uint32_t(clamp(h_scaledOutputPixels[iPixel].y * 255.0f, 0.0f, 255.0f)) <<  8 ) |
+					( uint32_t(clamp(h_scaledOutputPixels[iPixel].z * 255.0f, 0.0f, 255.0f)) << 16 ) |
+					( uint32_t(clamp(h_scaledOutputPixels[iPixel].w * 255.0f, 0.0f, 255.0f)) << 24 );
 			}
 			// Write output image
 			char outImageFileName[128];
