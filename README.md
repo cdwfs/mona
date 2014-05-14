@@ -4,12 +4,14 @@ EvoGpuPso
 
 This is me trying to write an efficient (near-realtime, ideally!) implementation
 of triangle-based image approximation, as popularized by Roger Alsing's EvoLisa project
-(http://rogeralsing.com/2008/12/07/genetic-programming-evolution-of-mona-lisa/). Roger's
-original code was written in C# (!!!) and performed all processing in a single CPU thread
-(!!!) using GDI for rendering (!!!!!). Its results are impressive, but convergence can
-take days.
+(http://rogeralsing.com/2008/12/07/genetic-programming-evolution-of-mona-lisa/). The general
+idea is to find a relatively small set of overlapping, flat-shaded, semi-transparent triangles
+that best approximates a given image. The results are impressive; usually only a few hundred
+triangles are necessary. Roger's original code was written in C# (!!!) and performed all
+processing in a single CPU thread (!!!) using GDI for rendering (!!!!!). Its results are
+impressive, but convergence can take *days*.
 
-I'd like to think I could do better.
+I'd like to think that I could do better.
 
 I'm starting from an existing CUDA implementation by Drew Robb and Joy Ding
 (http://isites.harvard.edu/fs/docs/icb.topic707165.files/pdfs/Ding_Robb.pdf), which uses
