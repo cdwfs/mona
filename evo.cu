@@ -16,9 +16,8 @@ typedef unsigned int uint;
 #define clip(a,l,h) (max(min(a,h),l))
 
 //luminance =  0.3 R + 0.59 G + 0.11 B
-#define RL 0.3
-#define GL 0.59
-#define BL 0.11
+#define luminance(color) ( fmaf((color).x, 0.3f, fmaf((color).y, 0.59, (color).z*0.11)) )
+#define dot3(a,b) ( fmaf((a).x, (b).x, fmaf((a).y, (b).y, (a).z*(b).z)) )
 
 //swap float module for swapping values in evaluation
 inline __host__ __device__ void swap(float& a, float& b) {
@@ -59,9 +58,9 @@ inline   __device__  void addtriangle(float4 * im, triangle * T, bool add, int i
 	}
 	
 	//set to alpha values that we are using 
-	TT.c.x = kEvoAlphaLimit * TT.c.x - kEvoAlphaOffset;
-	TT.c.y = kEvoAlphaLimit * TT.c.y - kEvoAlphaOffset;
-	TT.c.z = kEvoAlphaLimit * TT.c.z - kEvoAlphaOffset;
+	TT.c.x = fmaf(kEvoAlphaLimit, TT.c.x, -kEvoAlphaOffset);
+	TT.c.y = fmaf(kEvoAlphaLimit, TT.c.y, -kEvoAlphaOffset);
+	TT.c.z = fmaf(kEvoAlphaLimit, TT.c.z, -kEvoAlphaOffset);
 	
 	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value so that we can render triangles properly
@@ -154,9 +153,9 @@ inline   __device__  void scoretriangle(float * sum, triangle * T, int imgWidth,
 	TT.c.x = clip(TT.c.x, 0.0, 1.0);
 	TT.c.y = clip(TT.c.y, 0.0, 1.0);
 	TT.c.z = clip(TT.c.z, 0.0, 1.0);
-	TT.c.x = kEvoAlphaLimit * TT.c.x - kEvoAlphaOffset;
-	TT.c.y = kEvoAlphaLimit * TT.c.y - kEvoAlphaOffset;
-	TT.c.z = kEvoAlphaLimit * TT.c.z - kEvoAlphaOffset;
+	TT.c.x = fmaf(kEvoAlphaLimit, TT.c.x, -kEvoAlphaOffset);
+	TT.c.y = fmaf(kEvoAlphaLimit, TT.c.y, -kEvoAlphaOffset);
+	TT.c.z = fmaf(kEvoAlphaLimit, TT.c.z, -kEvoAlphaOffset);
 	
 	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value, yes, this is retarded
@@ -208,11 +207,11 @@ inline   __device__  void scoretriangle(float * sum, triangle * T, int imgWidth,
 			i < clip(xt + m2 * (yy - imgHeight * y1 ), 0.0, (float)imgWidth); i += kEvoBlockDim) {
 
 			float4 o = tex2D(currimg, i, yy) - tex2D(refimg, i, yy);
-			localsum -= o.x * o.x + o.y * o.y + o.z * o.z +
-				(RL * o.x + GL * o.y + BL * o.z) * (RL * o.x + GL * o.y + BL * o.z);
+			float lum = luminance(o);
+			localsum -= dot3(o, o) + lum*lum;
 			o.x += TT.c.x; o.y += TT.c.y; o.z += TT.c.z;
-			localsum += o.x * o.x + o.y * o.y + o.z * o.z +
-				(RL * o.x + GL * o.y + BL * o.z) * (RL * o.x + GL * o.y + BL * o.z);
+			lum = luminance(o);
+			localsum += dot3(o, o) + lum*lum;
 		}
 	}
 	
@@ -232,11 +231,11 @@ inline   __device__  void scoretriangle(float * sum, triangle * T, int imgWidth,
 			i < clip(xt + m2 * (yy - imgHeight * y2 + 1), 0, (float)imgWidth); i += kEvoBlockDim) {
 
 			float4 o = tex2D(currimg, i, yy) - tex2D(refimg, i, yy);
-			localsum -= o.x * o.x + o.y * o.y + o.z * o.z +
-				(RL * o.x + GL * o.y + BL * o.z) * (RL * o.x + GL * o.y + BL * o.z);
+			float lum = luminance(o);
+			localsum -= dot3(o, o) + lum*lum;
 			o.x += TT.c.x; o.y += TT.c.y; o.z += TT.c.z;
-			localsum += o.x * o.x + o.y * o.y + o.z * o.z +
-				(RL * o.x + GL * o.y + BL * o.z) * (RL * o.x + GL * o.y + BL * o.z);	
+			lum = luminance(o);
+			localsum += dot3(o, o) + lum*lum;
 		}
 	}
 	__shared__ float sums[kEvoBlockDim];
@@ -376,9 +375,8 @@ __global__ void render(float4 * im,
 			int g = yy * imgPitch + i;
 			float4 o = tex2D(refimg, i, yy);
 			o.x -= im[g].x; o.y -= im[g].y; o.z -= im[g].z;
-			sums[kEvoBlockDim*threadIdx.y+threadIdx.x] += o.x * o.x + o.y * o.y + o.z * o.z + 
-				(RL * o.x + GL * o.y + BL * o.z) * 
-				(RL * o.x + GL * o.y + BL * o.z);
+			float lum = luminance(o);
+			sums[kEvoBlockDim*threadIdx.y + threadIdx.x] += dot3(o, o) + lum*lum;
 		}
 	}
 	__syncthreads();
@@ -448,9 +446,9 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, int imgWid
 			if(i > imgWidth || i < 0) continue;
 			int g = imgPitch * yy + i;
 
-			im[g].x += (kEvoAlphaLimit * T->c.x - kEvoAlphaOffset);
-			im[g].y += (kEvoAlphaLimit * T->c.y - kEvoAlphaOffset);
-			im[g].z += (kEvoAlphaLimit * T->c.z - kEvoAlphaOffset);
+			im[g].x += fmaf(kEvoAlphaLimit, T->c.x, -kEvoAlphaOffset);
+			im[g].y += fmaf(kEvoAlphaLimit, T->c.y, -kEvoAlphaOffset);
+			im[g].z += fmaf(kEvoAlphaLimit, T->c.z, -kEvoAlphaOffset);
 
 		}
 
@@ -469,9 +467,9 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, int imgWid
 			i < clip(xt + m2 * (yy - imgHeight * y2 + 1), 0, imgWidth); i += kEvoBlockDim) {
 			if(i > imgWidth || i < 0) continue;
 			int g = imgPitch * yy + i;
-			im[g].x += (kEvoAlphaLimit * T->c.x - kEvoAlphaOffset);
-			im[g].y += (kEvoAlphaLimit * T->c.y - kEvoAlphaOffset);
-			im[g].z += (kEvoAlphaLimit * T->c.z - kEvoAlphaOffset);
+			im[g].x += fmaf(kEvoAlphaLimit, T->c.x, -kEvoAlphaOffset);
+			im[g].y += fmaf(kEvoAlphaLimit, T->c.y, -kEvoAlphaOffset);
+			im[g].z += fmaf(kEvoAlphaLimit, T->c.z, -kEvoAlphaOffset);
 
 		}
 	}
