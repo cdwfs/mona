@@ -231,7 +231,7 @@ inline   __device__  void scoretriangle(float * sum, triangle * T, float imgWidt
 		
 	// score second half
 	for(int yy = threadIdx.y+h2; yy < h3; yy+=kEvoBlockDim) {
-		int xStart = threadIdx.x + clip(threadIdx.x + xs + m1 * (yy - imgHeight * y2 + 1), 0, imgWidth);
+		int xStart = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y2 + 1), 0, imgWidth);
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y2 + 1), 0, imgWidth);
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
 			float4 o = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
