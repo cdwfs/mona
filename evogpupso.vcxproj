@@ -72,6 +72,7 @@
       <Runtime>MTd</Runtime>
       <Defines>WIN32</Defines>
       <CodeGeneration>compute_30,sm_30</CodeGeneration>
+      <GenerateLineInfo>true</GenerateLineInfo>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -98,6 +99,7 @@
       <CodeGeneration>compute_30,sm_30</CodeGeneration>
       <Runtime>MT</Runtime>
       <Defines>WIN32</Defines>
+      <GenerateLineInfo>true</GenerateLineInfo>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
