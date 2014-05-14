@@ -20,6 +20,7 @@ has been adapting the code to C++. From there I intend to profile and optimize t
 Here's the Mona Lisa approximated with 500 triangles over 2400 iterations. Each frame
 represents 100 iterations of the algorithm. This sequence took about 4 minutes to
 evolve on my laptop's 650M (but was effectively stable after 1200 iterations in 100 seconds):
+
 ![image](https://raw.githubusercontent.com/cdwfs/evogpupso/master/lisa.gif)
 
  - 5/13/2014: I took a quick stupid-obvious-optimizations pass over the kernels. I hoisting some loop
