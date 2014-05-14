@@ -27,10 +27,10 @@ evolve on my laptop's 650M (but was effectively stable after 1200 iterations in 
 Change Log
 ----------
  - 5/14/2014: Reading Ding & Robb's paper revealed some easy improvements, mostly having to do with parameter tuning. My neighborhood size
-   and alpha limit are both too large, and appropriate values can apparently be determined as functions of particle count and
+   and alpha limit were both too large, and appropriate values can apparently be determined as functions of particle count and
    triangle count respectively. The PSO dampening factor also seems to have two optimal values to choose from, depending on the preference
    for short-term or long-term convergence quality. I'd like to roll all of this into one giant "perf/quality" knob, but for now if I
-   tune everything for short-term performance it's about 33% faster than last night.
+   tune everything for short-term performance it's about 33% faster than yesterday's build.
    I also located an even better resource than the paper: [Ding](http://joyding.tumblr.com/) & [Robb](http://drewrobb.com/)
    themselves!
  - 5/13/2014: Today I completed a quick optimization pass over the kernels. I hoisted some loop
