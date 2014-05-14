@@ -11,7 +11,7 @@
 #define kEvoBlockDim 16   // grid width/height
 #define kEvoPsoIterationCount 1000 // maximum number of iterations at each PSO stage (overridden by checklimit)
 #define kEvoMaxTriangleCount 800 // number of triangles to render (max)
-#define kEvoPsoNeighborhoodSize 24 // Size of neighbhorhood (PSO topology)
+#define kEvoPsoNeighborhoodSize 8 // Size of neighbhorhood (PSO topology)
 #define kEvoPsoSpringConstant 0.7f // Spring constant for PSO iteration. Anything in the range [0.7..2.0] seems to work equally well.
 
 //triangle class. stores color/alpha values, as well as coordinates of vertices
