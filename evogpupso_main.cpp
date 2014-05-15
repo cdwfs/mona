@@ -140,8 +140,8 @@ int main(int argc, char *argv[])
 	triangle *h_currentTriangles = (triangle*)malloc(kEvoMaxTriangleCount*sizeof(triangle)); // curr
 	memset(h_currentTriangles, 0, kEvoMaxTriangleCount*sizeof(triangle));
 	triangle *d_currentTriangles = NULL; // Gcurr
-	CUDA_CHECK( cudaMalloc(&d_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle)) );
-	CUDA_CHECK( cudaMemset(d_currentTriangles, 0, kEvoMaxTriangleCount*sizeof(triangle)) );
+	CUDA_CHECK( cudaMalloc(&d_currentTriangles,    kEvoMaxTriangleCount*sizeof(triangle)) );
+	CUDA_CHECK( cudaMemset( d_currentTriangles, 0, kEvoMaxTriangleCount*sizeof(triangle)) );
 	triangle *h_oldTriangles = (triangle*)malloc(kEvoMaxTriangleCount*sizeof(triangle)); // oldCurr
 	memcpy(h_oldTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle));
 
