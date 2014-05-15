@@ -37,51 +37,51 @@ texture<float4, cudaTextureType2D, cudaReadModeElementType> refimg; // original 
 
 
 // adds a triangle to the working image, or subtracts it if add==0
-inline   __device__  void addtriangle(float4 * im, triangle * T, bool add, float imgWidth, float imgHeight, int imgPitch)
+inline   __device__  void addtriangle(float4 * img, triangle * tri, bool add, float imgWidth, float imgHeight, int imgPitch)
 {
 	//intializes shared memory
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
 	__shared__ int h1,h2,h3,swap,bad;
 	//copies over image
-	triangle TT = *T;
+	float3 triColor = make_float3(tri->r, tri->g, tri->b);
 
 	//clip color values to valid range
-	TT.r = clip(TT.r, 0.0f, 1.0f);
-	TT.g = clip(TT.g, 0.0f, 1.0f);
-	TT.b = clip(TT.b, 0.0f, 1.0f);
+	triColor.x = clip(triColor.x, 0.0f, 1.0f);
+	triColor.y = clip(triColor.y, 0.0f, 1.0f);
+	triColor.z = clip(triColor.z, 0.0f, 1.0f);
 
 	//if we are subtracting the triangle, set values to -1
 	if(add == 0) {
-		TT.r *= -1;
-		TT.g *= -1;
-		TT.b *= -1;
+		triColor.x *= -1;
+		triColor.y *= -1;
+		triColor.z *= -1;
 	}
 	
 	//set to alpha values that we are using 
-	TT.r = fmaf(kEvoAlphaLimit, TT.r, -kEvoAlphaOffset);
-	TT.g = fmaf(kEvoAlphaLimit, TT.g, -kEvoAlphaOffset);
-	TT.b = fmaf(kEvoAlphaLimit, TT.b, -kEvoAlphaOffset);
+	triColor.x = fmaf(kEvoAlphaLimit, triColor.x, -kEvoAlphaOffset);
+	triColor.y = fmaf(kEvoAlphaLimit, triColor.y, -kEvoAlphaOffset);
+	triColor.z = fmaf(kEvoAlphaLimit, triColor.z, -kEvoAlphaOffset);
 	
 	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value so that we can render triangles properly
 		bad = 0;
-		if     (TT.y1 < TT.y2 && TT.y2 < TT.y3) {
-			x1 = TT.x1; y1 = TT.y1; x2 = TT.x2; y2 = TT.y2; x3 = TT.x3; y3 = TT.y3;
+		if     (tri->y1 < tri->y2 && tri->y2 < tri->y3) {
+			x1 = tri->x1; y1 = tri->y1; x2 = tri->x2; y2 = tri->y2; x3 = tri->x3; y3 = tri->y3;
 		} 
-		else if(TT.y1 < TT.y3 && TT.y3 < TT.y2) {
-			x1 = TT.x1; y1 = TT.y1; x2 = TT.x3; y2 = TT.y3; x3 = TT.x2; y3 = TT.y2;
+		else if(tri->y1 < tri->y3 && tri->y3 < tri->y2) {
+			x1 = tri->x1; y1 = tri->y1; x2 = tri->x3; y2 = tri->y3; x3 = tri->x2; y3 = tri->y2;
 		}
-		else if(TT.y2 < TT.y1 && TT.y1 < TT.y3) {
-			x1 = TT.x2; y1 = TT.y2; x2 = TT.x1; y2 = TT.y1; x3 = TT.x3; y3 = TT.y3;
+		else if(tri->y2 < tri->y1 && tri->y1 < tri->y3) {
+			x1 = tri->x2; y1 = tri->y2; x2 = tri->x1; y2 = tri->y1; x3 = tri->x3; y3 = tri->y3;
 		}
-		else if(TT.y2 < TT.y3 && TT.y3 < TT.y1) {
-			x1 = TT.x2; y1 = TT.y2; x2 = TT.x3; y2 = TT.y3; x3 = TT.x1; y3 = TT.y1;
+		else if(tri->y2 < tri->y3 && tri->y3 < tri->y1) {
+			x1 = tri->x2; y1 = tri->y2; x2 = tri->x3; y2 = tri->y3; x3 = tri->x1; y3 = tri->y1;
 		}
-		else if(TT.y3 < TT.y1 && TT.y1 < TT.y2) {
-			x1 = TT.x3; y1 = TT.y3; x2 = TT.x1; y2 = TT.y1; x3 = TT.x2; y3 = TT.y2;
+		else if(tri->y3 < tri->y1 && tri->y1 < tri->y2) {
+			x1 = tri->x3; y1 = tri->y3; x2 = tri->x1; y2 = tri->y1; x3 = tri->x2; y3 = tri->y2;
 		}
-		else if(TT.y3 < TT.y2 && TT.y2 < TT.y1) {
-			x1 = TT.x3; y1 = TT.y3; x2 = TT.x2; y2 = TT.y2; x3 = TT.x1; y3 = TT.y1;
+		else if(tri->y3 < tri->y2 && tri->y2 < tri->y1) {
+			x1 = tri->x3; y1 = tri->y3; x2 = tri->x2; y2 = tri->y2; x3 = tri->x1; y3 = tri->y1;
 		}
 		// flag if something isn't right...
 		else bad = 1;
@@ -111,12 +111,12 @@ inline   __device__  void addtriangle(float4 * im, triangle * T, bool add, float
 	for(int yy = h1 + threadIdx.y; yy < h2; yy += kEvoBlockDim) {
 		int xStart = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y1), 0.0f, imgWidth);
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y1), 0.0f, imgWidth);
-		int g = imgPitch * yy + xStart;
+		int pixelIndex = imgPitch * yy + xStart;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			im[g].x += TT.r;
-			im[g].y += TT.g;
-			im[g].z += TT.b;
-			g += kEvoBlockDim;
+			img[pixelIndex].x += triColor.x;
+			img[pixelIndex].y += triColor.y;
+			img[pixelIndex].z += triColor.z;
+			pixelIndex += kEvoBlockDim;
 		}
 
 	}
@@ -135,12 +135,12 @@ inline   __device__  void addtriangle(float4 * im, triangle * T, bool add, float
 	for(int yy = h2 + threadIdx.y; yy < h3; yy += kEvoBlockDim) {
 		int xStart = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
-		int g = imgPitch * yy + xStart;
+		int pixelIndex = imgPitch * yy + xStart;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			im[g].x += TT.r;
-			im[g].y += TT.g;
-			im[g].z += TT.b;
-			g += kEvoBlockDim;
+			img[pixelIndex].x += triColor.x;
+			img[pixelIndex].y += triColor.y;
+			img[pixelIndex].z += triColor.z;
+			pixelIndex += kEvoBlockDim;
 		}
 	}
 }
@@ -148,39 +148,39 @@ inline   __device__  void addtriangle(float4 * im, triangle * T, bool add, float
 
 // calculates the net effect on the score for a a given triangle T
 // similar to addtriangle
-inline   __device__  void scoretriangle(float * sum, triangle * T, float imgWidth, float imgHeight)
+inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWidth, float imgHeight)
 {
 
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
 	__shared__ int h1,h2,h3,swap,bad;
-	triangle TT = *T;
-	TT.r = clip(TT.r, 0.0f, 1.0f);
-	TT.g = clip(TT.g, 0.0f, 1.0f);
-	TT.b = clip(TT.b, 0.0f, 1.0f);
-	TT.r = fmaf(kEvoAlphaLimit, TT.r, -kEvoAlphaOffset);
-	TT.g = fmaf(kEvoAlphaLimit, TT.g, -kEvoAlphaOffset);
-	TT.b = fmaf(kEvoAlphaLimit, TT.b, -kEvoAlphaOffset);
+	float3 triColor = make_float3(tri->r, tri->g, tri->b);
+	triColor.x = clip(triColor.x, 0.0f, 1.0f);
+	triColor.y = clip(triColor.y, 0.0f, 1.0f);
+	triColor.z = clip(triColor.z, 0.0f, 1.0f);
+	triColor.x = fmaf(kEvoAlphaLimit, triColor.x, -kEvoAlphaOffset);
+	triColor.y = fmaf(kEvoAlphaLimit, triColor.y, -kEvoAlphaOffset);
+	triColor.z = fmaf(kEvoAlphaLimit, triColor.z, -kEvoAlphaOffset);
 	
 	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value, yes, this is retarded
 		bad = 0;
-		if     (TT.y1 < TT.y2 && TT.y2 < TT.y3) {
-			x1 = TT.x1; y1 = TT.y1; x2 = TT.x2; y2 = TT.y2; x3 = TT.x3; y3 = TT.y3;
+		if     (tri->y1 < tri->y2 && tri->y2 < tri->y3) {
+			x1 = tri->x1; y1 = tri->y1; x2 = tri->x2; y2 = tri->y2; x3 = tri->x3; y3 = tri->y3;
 		} 
-		else if(TT.y1 < TT.y3 && TT.y3 < TT.y2) {
-			x1 = TT.x1; y1 = TT.y1; x2 = TT.x3; y2 = TT.y3; x3 = TT.x2; y3 = TT.y2;
+		else if(tri->y1 < tri->y3 && tri->y3 < tri->y2) {
+			x1 = tri->x1; y1 = tri->y1; x2 = tri->x3; y2 = tri->y3; x3 = tri->x2; y3 = tri->y2;
 		}
-		else if(TT.y2 < TT.y1 && TT.y1 < TT.y3) {
-			x1 = TT.x2; y1 = TT.y2; x2 = TT.x1; y2 = TT.y1; x3 = TT.x3; y3 = TT.y3;
+		else if(tri->y2 < tri->y1 && tri->y1 < tri->y3) {
+			x1 = tri->x2; y1 = tri->y2; x2 = tri->x1; y2 = tri->y1; x3 = tri->x3; y3 = tri->y3;
 		}
-		else if(TT.y2 < TT.y3 && TT.y3 < TT.y1) {
-			x1 = TT.x2; y1 = TT.y2; x2 = TT.x3; y2 = TT.y3; x3 = TT.x1; y3 = TT.y1;
+		else if(tri->y2 < tri->y3 && tri->y3 < tri->y1) {
+			x1 = tri->x2; y1 = tri->y2; x2 = tri->x3; y2 = tri->y3; x3 = tri->x1; y3 = tri->y1;
 		}
-		else if(TT.y3 < TT.y1 && TT.y1 < TT.y2) {
-			x1 = TT.x3; y1 = TT.y3; x2 = TT.x1; y2 = TT.y1; x3 = TT.x2; y3 = TT.y2;
+		else if(tri->y3 < tri->y1 && tri->y1 < tri->y2) {
+			x1 = tri->x3; y1 = tri->y3; x2 = tri->x1; y2 = tri->y1; x3 = tri->x2; y3 = tri->y2;
 		}
-		else if(TT.y3 < TT.y2 && TT.y2 < TT.y1) {
-			x1 = TT.x3; y1 = TT.y3; x2 = TT.x2; y2 = TT.y2; x3 = TT.x1; y3 = TT.y1;
+		else if(tri->y3 < tri->y2 && tri->y2 < tri->y1) {
+			x1 = tri->x3; y1 = tri->y3; x2 = tri->x2; y2 = tri->y2; x3 = tri->x1; y3 = tri->y1;
 		}
 		// flag if something isn't right...
 		else bad = 1;
@@ -210,12 +210,12 @@ inline   __device__  void scoretriangle(float * sum, triangle * T, float imgWidt
 		int xStart = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y1), 0.0f, imgWidth);
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y1), 0.0f, imgWidth);
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			float4 o = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
-			float lum = luminance(o);
-			localsum -= dot3(o, o) + lum*lum;
-			o.x += TT.r; o.y += TT.g; o.z += TT.b;
-			lum = luminance(o);
-			localsum += dot3(o, o) + lum*lum;
+			float4 pixelDiff = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
+			float lum = luminance(pixelDiff);
+			localsum -= dot3(pixelDiff, pixelDiff) + lum*lum;
+			pixelDiff.x += triColor.x; pixelDiff.y += triColor.y; pixelDiff.z += triColor.z;
+			lum = luminance(pixelDiff);
+			localsum += dot3(pixelDiff, pixelDiff) + lum*lum;
 		}
 	}
 	
@@ -234,12 +234,12 @@ inline   __device__  void scoretriangle(float * sum, triangle * T, float imgWidt
 		int xStart = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			float4 o = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
-			float lum = luminance(o);
-			localsum -= dot3(o, o) + lum*lum;
-			o.x += TT.r; o.y += TT.g; o.z += TT.b;
-			lum = luminance(o);
-			localsum += dot3(o, o) + lum*lum;
+			float4 pixelDiff = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
+			float lum = luminance(pixelDiff);
+			localsum -= dot3(pixelDiff, pixelDiff) + lum*lum;
+			pixelDiff.x += triColor.x; pixelDiff.y += triColor.y; pixelDiff.z += triColor.z;
+			lum = luminance(pixelDiff);
+			localsum += dot3(pixelDiff, pixelDiff) + lum*lum;
 		}
 	}
 	__shared__ float sums[kEvoBlockDim];
@@ -478,8 +478,7 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, float imgW
 }
 
 // similar to render, but for output. Also not worth looking at.
-__global__ void renderproof(float4 * im,
-					   triangle * curr, int imgWidth, int imgHeight, int imgPitch) {
+__global__ void renderproof(float4 * im, triangle * curr, int imgWidth, int imgHeight, int imgPitch) {
 	for(int y = threadIdx.y; y < imgHeight; y += kEvoBlockDim) {
 		int g = y * imgPitch + threadIdx.x;
 		for (int x = threadIdx.x; x < imgWidth; x += kEvoBlockDim) {
