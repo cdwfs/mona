@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
 		CUDA_CHECK( cudaMemcpy(h_currentTriangles, d_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToHost) );
 
 		// Choose a new random triangle to update
-		currentTriangleIndex = (int32_t)( randf() * min(iIter/2, kEvoMaxTriangleCount) );
+		currentTriangleIndex = rand() % min((iIter+1)/2, kEvoMaxTriangleCount);
 		CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(int32_t), cudaMemcpyHostToDevice) );
 
 		// Render initial solution
@@ -210,12 +210,10 @@ int main(int argc, char *argv[])
 		CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 
 		// check that this isn't a huge regression, revert and pick new K if so
-		if (currentScore * (1.0 - 2.0 / kEvoMaxTriangleCount) > bestScore)
+		if (currentScore * (1.0f - 2.0f / (float)kEvoMaxTriangleCount) > bestScore)
 		{
 			memcpy(h_currentTriangles, h_oldTriangles, kEvoMaxTriangleCount*sizeof(triangle));
 			CUDA_CHECK( cudaMemcpy(d_currentTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
-			currentTriangleIndex = (int32_t)( randf() * min(iIter/2, kEvoMaxTriangleCount) );
-			CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(int32_t), cudaMemcpyHostToDevice) );
 			launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore, imgWidth, imgHeight, originalPixelsPitch/sizeof(float4));
 			CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 		}
@@ -265,8 +263,6 @@ int main(int argc, char *argv[])
 		// Visual output
 		if ((iIter % 100) == 0)
 		{
-			currentTriangleIndex = -1;
-			CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(uint32_t), cudaMemcpyHostToDevice) );
 			launch_renderproof(d_scaledOutputPixels, d_currentTriangles, kEvoOutputScale*imgWidth, kEvoOutputScale*imgHeight, scaledPixelsPitch/sizeof(float4));
 			CUDA_CHECK( cudaMemcpy2D(h_scaledOutputPixels,  kEvoOutputScale*srcPitch, d_scaledOutputPixels, scaledPixelsPitch, kEvoOutputScale*srcPitch, kEvoOutputScale*imgHeight, cudaMemcpyDeviceToHost) );
 			// Convert to RGBA8888 for output
