@@ -16,13 +16,15 @@
 #define kEvoPsoDampeningFactor 0.85f // Dampening factor for PSO iteration. Use 0.85f for faster short-term convergence; 0.999f for higher quality long-term convergence.
 
 //triangle class. stores color/alpha values, as well as coordinates of vertices
-class triangle {
-public:
+struct triangle {
 	float x1;
 	float y1;
 	float x2;
 	float y2;
 	float x3;
 	float y3;
-	float4 c;
+	float r;
+	float g;
+	float b;
+	float a; // TODO: unused
 };

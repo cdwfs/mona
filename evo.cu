@@ -46,21 +46,21 @@ inline   __device__  void addtriangle(float4 * im, triangle * T, bool add, float
 	triangle TT = *T;
 
 	//clip color values to valid range
-	TT.c.x = clip(TT.c.x, 0.0f, 1.0f);
-	TT.c.y = clip(TT.c.y, 0.0f, 1.0f);
-	TT.c.z = clip(TT.c.z, 0.0f, 1.0f);
+	TT.r = clip(TT.r, 0.0f, 1.0f);
+	TT.g = clip(TT.g, 0.0f, 1.0f);
+	TT.b = clip(TT.b, 0.0f, 1.0f);
 
 	//if we are subtracting the triangle, set values to -1
 	if(add == 0) {
-		TT.c.x *= -1;
-		TT.c.y *= -1;
-		TT.c.z *= -1;
+		TT.r *= -1;
+		TT.g *= -1;
+		TT.b *= -1;
 	}
 	
 	//set to alpha values that we are using 
-	TT.c.x = fmaf(kEvoAlphaLimit, TT.c.x, -kEvoAlphaOffset);
-	TT.c.y = fmaf(kEvoAlphaLimit, TT.c.y, -kEvoAlphaOffset);
-	TT.c.z = fmaf(kEvoAlphaLimit, TT.c.z, -kEvoAlphaOffset);
+	TT.r = fmaf(kEvoAlphaLimit, TT.r, -kEvoAlphaOffset);
+	TT.g = fmaf(kEvoAlphaLimit, TT.g, -kEvoAlphaOffset);
+	TT.b = fmaf(kEvoAlphaLimit, TT.b, -kEvoAlphaOffset);
 	
 	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value so that we can render triangles properly
@@ -113,9 +113,9 @@ inline   __device__  void addtriangle(float4 * im, triangle * T, bool add, float
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y1), 0.0f, imgWidth);
 		int g = imgPitch * yy + xStart;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			im[g].x += TT.c.x;
-			im[g].y += TT.c.y;
-			im[g].z += TT.c.z;
+			im[g].x += TT.r;
+			im[g].y += TT.g;
+			im[g].z += TT.b;
 			g += kEvoBlockDim;
 		}
 
@@ -137,9 +137,9 @@ inline   __device__  void addtriangle(float4 * im, triangle * T, bool add, float
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
 		int g = imgPitch * yy + xStart;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			im[g].x += TT.c.x;
-			im[g].y += TT.c.y;
-			im[g].z += TT.c.z;
+			im[g].x += TT.r;
+			im[g].y += TT.g;
+			im[g].z += TT.b;
 			g += kEvoBlockDim;
 		}
 	}
@@ -154,12 +154,12 @@ inline   __device__  void scoretriangle(float * sum, triangle * T, float imgWidt
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
 	__shared__ int h1,h2,h3,swap,bad;
 	triangle TT = *T;
-	TT.c.x = clip(TT.c.x, 0.0f, 1.0f);
-	TT.c.y = clip(TT.c.y, 0.0f, 1.0f);
-	TT.c.z = clip(TT.c.z, 0.0f, 1.0f);
-	TT.c.x = fmaf(kEvoAlphaLimit, TT.c.x, -kEvoAlphaOffset);
-	TT.c.y = fmaf(kEvoAlphaLimit, TT.c.y, -kEvoAlphaOffset);
-	TT.c.z = fmaf(kEvoAlphaLimit, TT.c.z, -kEvoAlphaOffset);
+	TT.r = clip(TT.r, 0.0f, 1.0f);
+	TT.g = clip(TT.g, 0.0f, 1.0f);
+	TT.b = clip(TT.b, 0.0f, 1.0f);
+	TT.r = fmaf(kEvoAlphaLimit, TT.r, -kEvoAlphaOffset);
+	TT.g = fmaf(kEvoAlphaLimit, TT.g, -kEvoAlphaOffset);
+	TT.b = fmaf(kEvoAlphaLimit, TT.b, -kEvoAlphaOffset);
 	
 	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value, yes, this is retarded
@@ -213,7 +213,7 @@ inline   __device__  void scoretriangle(float * sum, triangle * T, float imgWidt
 			float4 o = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
 			float lum = luminance(o);
 			localsum -= dot3(o, o) + lum*lum;
-			o.x += TT.c.x; o.y += TT.c.y; o.z += TT.c.z;
+			o.x += TT.r; o.y += TT.g; o.z += TT.b;
 			lum = luminance(o);
 			localsum += dot3(o, o) + lum*lum;
 		}
@@ -237,7 +237,7 @@ inline   __device__  void scoretriangle(float * sum, triangle * T, float imgWidt
 			float4 o = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
 			float lum = luminance(o);
 			localsum -= dot3(o, o) + lum*lum;
-			o.x += TT.c.x; o.y += TT.c.y; o.z += TT.c.z;
+			o.x += TT.r; o.y += TT.g; o.z += TT.b;
 			lum = luminance(o);
 			localsum += dot3(o, o) + lum*lum;
 		}
@@ -403,10 +403,10 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, float imgW
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
 	__shared__ int h1,h2,h3,swap,bad;
 	if(threadIdx.x+threadIdx.y==0) {
-		T->c.w = clip(T->c.w, 0.0f, 1.0f);
-		T->c.x = clip(T->c.x, 0.0f, 1.0f);
-		T->c.y = clip(T->c.y, 0.0f, 1.0f);
-		T->c.z = clip(T->c.z, 0.0f, 1.0f);
+		T->a = clip(T->a, 0.0f, 1.0f);
+		T->r = clip(T->r, 0.0f, 1.0f);
+		T->g = clip(T->g, 0.0f, 1.0f);
+		T->b = clip(T->b, 0.0f, 1.0f);
 		bad = 0;
 		if     (T->y1 < T->y2 && T->y2 < T->y3) {
 			x1 = T->x1; y1 = T->y1; x2 = T->x2; y2 = T->y2; x3 = T->x3; y3 = T->y3;
@@ -447,9 +447,9 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, float imgW
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y1), 0.0f, imgWidth);
 		int g = imgPitch * yy + xStart;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			im[g].x += fmaf(kEvoAlphaLimit, T->c.x, -kEvoAlphaOffset);
-			im[g].y += fmaf(kEvoAlphaLimit, T->c.y, -kEvoAlphaOffset);
-			im[g].z += fmaf(kEvoAlphaLimit, T->c.z, -kEvoAlphaOffset);
+			im[g].x += fmaf(kEvoAlphaLimit, T->r, -kEvoAlphaOffset);
+			im[g].y += fmaf(kEvoAlphaLimit, T->g, -kEvoAlphaOffset);
+			im[g].z += fmaf(kEvoAlphaLimit, T->b, -kEvoAlphaOffset);
 			g += kEvoBlockDim;
 		}
 
@@ -468,9 +468,9 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, float imgW
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
 		int g = imgPitch * yy + xStart;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			im[g].x += fmaf(kEvoAlphaLimit, T->c.x, -kEvoAlphaOffset);
-			im[g].y += fmaf(kEvoAlphaLimit, T->c.y, -kEvoAlphaOffset);
-			im[g].z += fmaf(kEvoAlphaLimit, T->c.z, -kEvoAlphaOffset);
+			im[g].x += fmaf(kEvoAlphaLimit, T->r, -kEvoAlphaOffset);
+			im[g].y += fmaf(kEvoAlphaLimit, T->g, -kEvoAlphaOffset);
+			im[g].z += fmaf(kEvoAlphaLimit, T->b, -kEvoAlphaOffset);
 			g += kEvoBlockDim;
 		}
 	}

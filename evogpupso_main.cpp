@@ -42,10 +42,10 @@ static void randomizeTrianglePos(triangle *tri)
 	tri->y2 = randf();
 	tri->x3 = randf();
 	tri->y3 = randf();
-	tri->c.x = randf();
-	tri->c.y = randf();
-	tri->c.z = randf();
-	tri->c.w = randf();
+	tri->r = randf();
+	tri->g = randf();
+	tri->b = randf();
+	tri->a = randf();
 }
 
 static void randomizeTriangleVel(triangle *tri)
@@ -56,10 +56,10 @@ static void randomizeTriangleVel(triangle *tri)
 	tri->y2 = randf() * 2.0f - 1.0f;
 	tri->x3 = randf() * 2.0f - 1.0f;
 	tri->y3 = randf() * 2.0f - 1.0f;
-	tri->c.x = randf() * 2.0f - 1.0f;
-	tri->c.y = randf() * 2.0f - 1.0f;
-	tri->c.z = randf() * 2.0f - 1.0f;
-	tri->c.w = randf() * 2.0f - 1.0f;
+	tri->r = randf() * 2.0f - 1.0f;
+	tri->g = randf() * 2.0f - 1.0f;
+	tri->b = randf() * 2.0f - 1.0f;
+	tri->a = randf() * 2.0f - 1.0f;
 }
 
 
