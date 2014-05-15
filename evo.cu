@@ -306,12 +306,13 @@ __global__ void run(triangle * curr,   //D (triangles)
 				lbest[blockIdx.x] = pos[blockIdx.x];
 				lbval[blockIdx.x] = fit[blockIdx.x];
 			}
-			// hack to improve early PSO convergence
+			// hack to improve early PSO convergence (is this D&R's "local best reduction"?)
 			else if(lbval[blockIdx.x] > 0) { 
 				lbval[blockIdx.x] *= 1.1f;
 			}
 
 			// global max find
+			// This is a race condition! Update must happen atomically!
 			if (fit[blockIdx.x] < *gbval) {
 				*gbval = fit[blockIdx.x];
 				curr[*M] = pos[blockIdx.x];
