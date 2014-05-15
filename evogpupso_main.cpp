@@ -175,15 +175,15 @@ int main(int argc, char *argv[])
 	float *h_psoParticlesLocalBestFit    =    (float*)malloc(kEvoPsoParticleCount*sizeof(float));    // lbval
 	triangle *h_psoParticlesNhoodBestPos = (triangle*)malloc(kEvoPsoParticleCount*sizeof(triangle)); // nbest
 	float *h_psoParticlesNhoodBestFit    =    (float*)malloc(kEvoPsoParticleCount*sizeof(float));    // nbval
-	float psoParticlesGlobalBestFit = FLT_MAX; // gbval
-	triangle *d_psoParticlesPos = NULL; // Gpos
-	triangle *d_psoParticlesVel = NULL; // Gvel
-	float *d_psoParticlesFit = NULL; // Gfit
-	triangle *d_psoParticlesLocalBestPos = NULL; // Glbest
-	float *d_psoParticlesLocalBestFit = NULL; // Glbval
-	triangle *d_psoParticlesNhoodBestPos = NULL; // Gnbest
-	float *d_psoParticlesNhoodBestFit = NULL; // Gnbval
-	float *d_psoParticlesGlobalBestFit = NULL; // Ggbval
+	float psoParticlesGlobalBestFit      = FLT_MAX; // gbval
+	triangle *d_psoParticlesPos          = NULL;    // Gpos
+	triangle *d_psoParticlesVel          = NULL;    // Gvel
+	float *d_psoParticlesFit             = NULL;    // Gfit
+	triangle *d_psoParticlesLocalBestPos = NULL;    // Glbest
+	float *d_psoParticlesLocalBestFit    = NULL;    // Glbval
+	triangle *d_psoParticlesNhoodBestPos = NULL;    // Gnbest
+	float *d_psoParticlesNhoodBestFit    = NULL;    // Gnbval
+	float *d_psoParticlesGlobalBestFit   = NULL;    // Ggbval
 	CUDA_CHECK( cudaMalloc(&d_psoParticlesPos,          kEvoPsoParticleCount*sizeof(triangle)) );
 	CUDA_CHECK( cudaMalloc(&d_psoParticlesVel,          kEvoPsoParticleCount*sizeof(triangle)) );
 	CUDA_CHECK( cudaMalloc(&d_psoParticlesFit,          kEvoPsoParticleCount*sizeof(float)) );
@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
 	CUDA_CHECK( cudaMalloc(&d_psoParticlesLocalBestFit, kEvoPsoParticleCount*sizeof(float)) );
 	CUDA_CHECK( cudaMalloc(&d_psoParticlesNhoodBestPos, kEvoPsoParticleCount*sizeof(triangle)) );
 	CUDA_CHECK( cudaMalloc(&d_psoParticlesNhoodBestFit, kEvoPsoParticleCount*sizeof(float)) );
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesGlobalBestFit, sizeof(float)) );
+	CUDA_CHECK( cudaMalloc(&d_psoParticlesGlobalBestFit,                     sizeof(float)) );
 
 	CpuTimer cpuTimer;
 	cpuTimer.Start();
