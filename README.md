@@ -19,8 +19,8 @@ which uses particle swarm optimization instead of Alsing's naive random-walk. Di
 has been adapting the code to C++. From there I intend to profile and optimize the kernels.
 
 Here's the Mona Lisa approximated with 500 triangles over 2400 iterations. Each frame
-represents 100 iterations of the algorithm. This sequence took about 4 minutes to
-evolve on my laptop's 650M (but was effectively stable after 1200 iterations in 100 seconds):
+represents 100 iterations of the algorithm. This sequence took about 3m20s minutes to
+evolve on my laptop's 650M:
 
 ![image](https://raw.githubusercontent.com/cdwfs/evogpupso/master/lisa.gif)
 
