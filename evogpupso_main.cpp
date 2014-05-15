@@ -142,8 +142,12 @@ int main(int argc, char *argv[])
 	triangle *d_currentTriangles = NULL; // Gcurr
 	CUDA_CHECK( cudaMalloc(&d_currentTriangles,    kEvoMaxTriangleCount*sizeof(triangle)) );
 	CUDA_CHECK( cudaMemset( d_currentTriangles, 0, kEvoMaxTriangleCount*sizeof(triangle)) );
-	triangle *h_oldTriangles = (triangle*)malloc(kEvoMaxTriangleCount*sizeof(triangle)); // oldCurr
-	memcpy(h_oldTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle));
+	triangle *h_bestTriangles = (triangle*)malloc(kEvoMaxTriangleCount*sizeof(triangle)); // oldCurr
+	memcpy(h_bestTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle));
+	triangle *d_bestTriangles = NULL;
+	CUDA_CHECK( cudaMalloc(&d_bestTriangles, kEvoMaxTriangleCount*sizeof(triangle)) );
+	CUDA_CHECK( cudaMemcpy( d_bestTriangles, d_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
+
 
 	// Rendered solution on the GPU (and scaled-up version for final output)
 	float4 *d_currentPixels = NULL; // Gim
@@ -197,9 +201,6 @@ int main(int argc, char *argv[])
 	cpuTimer.Start();
 	for(int32_t iIter=1; iIter<=kEvoIterationCount; ++iIter)
 	{
-		// Copy current solution back to host (why?)
-		CUDA_CHECK( cudaMemcpy(h_currentTriangles, d_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToHost) );
-
 		// Choose a new random triangle to update
 		currentTriangleIndex = rand() % min((iIter+1)/2, kEvoMaxTriangleCount);
 		CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(int32_t), cudaMemcpyHostToDevice) );
@@ -212,11 +213,22 @@ int main(int argc, char *argv[])
 		// check that this isn't a huge regression, revert and pick new K if so
 		if (currentScore * (1.0f - 2.0f / (float)kEvoMaxTriangleCount) > bestScore)
 		{
-			memcpy(h_currentTriangles, h_oldTriangles, kEvoMaxTriangleCount*sizeof(triangle));
+			memcpy(h_currentTriangles, h_bestTriangles, kEvoMaxTriangleCount*sizeof(triangle));
 			CUDA_CHECK( cudaMemcpy(d_currentTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
 			launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore, imgWidth, imgHeight, originalPixelsPitch/sizeof(float4));
 			CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 		}
+		// Update best score if needed
+		if (currentScore < bestScore && currentScore != 0)
+		{
+			bestScore = currentScore;
+			// Update best known solution
+			memcpy(h_bestTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle));
+		}
+		// Print output
+		cpuTimer.Update();
+		printf("%7.2fs (gen %4d): score = %.4f [best = %.4f]\n", cpuTimer.GetElapsedSeconds(), iIter, currentScore, bestScore);
+
 		// texturize current solution
 		CUDA_CHECK( cudaBindTexture2D(&offset, currImg, d_currentPixels, &channelDesc, imgWidth, imgHeight, originalPixelsPitch) );
 
@@ -248,22 +260,14 @@ int main(int argc, char *argv[])
 			d_psoParticlesGlobalBestFit,
 			d_currentTriangleIndex, imgWidth, imgHeight);
 
-		// Update best score if needed
-		if (currentScore < bestScore && currentScore != 0)
-		{
-			bestScore = currentScore;
-		}
-		// Print output
-		cpuTimer.Update();
-		printf("%7.2fs (gen %4d): score = %.4f [best = %.4f]\n", cpuTimer.GetElapsedSeconds(), iIter, currentScore, bestScore);
-
-		// Update solution (tentatively)
-		memcpy(h_oldTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle));
+		// Copy current solution back to host
+		CUDA_CHECK( cudaMemcpy(h_currentTriangles, d_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToHost) );
 
 		// Visual output
 		if ((iIter % 100) == 0)
 		{
-			launch_renderproof(d_scaledOutputPixels, d_currentTriangles, kEvoOutputScale*imgWidth, kEvoOutputScale*imgHeight, scaledPixelsPitch/sizeof(float4));
+			CUDA_CHECK( cudaMemcpy(d_bestTriangles, d_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
+			launch_renderproof(d_scaledOutputPixels, d_bestTriangles, kEvoOutputScale*imgWidth, kEvoOutputScale*imgHeight, scaledPixelsPitch/sizeof(float4));
 			CUDA_CHECK( cudaMemcpy2D(h_scaledOutputPixels,  kEvoOutputScale*srcPitch, d_scaledOutputPixels, scaledPixelsPitch, kEvoOutputScale*srcPitch, kEvoOutputScale*imgHeight, cudaMemcpyDeviceToHost) );
 			// Convert to RGBA8888 for output
 			for(int32_t iPixel=0; iPixel<kEvoOutputScale*imgWidth*kEvoOutputScale*imgHeight; ++iPixel)
