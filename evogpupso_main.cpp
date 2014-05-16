@@ -102,13 +102,13 @@ int main(int argc, char *argv[])
 	// rm ./temp_images/*
 
 	// Load input image
-	const uint32_t *inputPixels = NULL;
+	const uint32_t *inputPixels = nullptr;
 	int imgWidth = -1, imgHeight = -1, imgNumComp = -1;
 	{
 		const char *inputImageFileName = argv[1];
 		printf("Loading '%s'...\n", inputImageFileName);
 		inputPixels = (const uint32_t*)stbi_load(inputImageFileName, &imgWidth, &imgHeight, &imgNumComp, 4);
-		if (inputPixels == NULL)
+		if (inputPixels == nullptr)
 		{
 			printf("Error loading input image '%s': %s\n", inputImageFileName, stbi_failure_reason());
 			return -1;
@@ -124,13 +124,13 @@ int main(int argc, char *argv[])
 		h_originalPixels[iPixel].w = (float)((inputPixels[iPixel] >> 24) & 0xFF) / 255.0f;
 	}
 	// Upload to GPU
-	float4 *d_originalPixels = NULL; // Goim
+	float4 *d_originalPixels = nullptr; // Goim
 	size_t srcPitch = (size_t)imgWidth*sizeof(float4);
 	size_t originalPixelsPitch = 0;
 	CUDA_CHECK( cudaMallocPitch(&d_originalPixels, &originalPixelsPitch,                   srcPitch,           imgHeight) );
 	CUDA_CHECK( cudaMemcpy2D(    d_originalPixels,  originalPixelsPitch, h_originalPixels, srcPitch, srcPitch, imgHeight, cudaMemcpyHostToDevice) );
 
-	const textureReference *refImg = NULL, *currImg = NULL;
+	const textureReference *refImg = nullptr, *currImg = nullptr;
 	getTextureReferences(&refImg, &currImg);
 	cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float4>();
 	size_t offset = 0;
@@ -139,21 +139,21 @@ int main(int argc, char *argv[])
 	// Create array of solution triangles
 	triangle *h_currentTriangles = (triangle*)malloc(kEvoMaxTriangleCount*sizeof(triangle)); // curr
 	memset(h_currentTriangles, 0, kEvoMaxTriangleCount*sizeof(triangle));
-	triangle *d_currentTriangles = NULL; // Gcurr
+	triangle *d_currentTriangles = nullptr; // Gcurr
 	CUDA_CHECK( cudaMalloc(&d_currentTriangles,    kEvoMaxTriangleCount*sizeof(triangle)) );
 	CUDA_CHECK( cudaMemset( d_currentTriangles, 0, kEvoMaxTriangleCount*sizeof(triangle)) );
 	triangle *h_bestTriangles = (triangle*)malloc(kEvoMaxTriangleCount*sizeof(triangle)); // oldCurr
 	memcpy(h_bestTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle));
-	triangle *d_bestTriangles = NULL;
+	triangle *d_bestTriangles = nullptr;
 	CUDA_CHECK( cudaMalloc(&d_bestTriangles, kEvoMaxTriangleCount*sizeof(triangle)) );
 	CUDA_CHECK( cudaMemcpy( d_bestTriangles, d_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
 
 
 	// Rendered solution on the GPU (and scaled-up version for final output)
-	float4 *d_currentPixels = NULL; // Gim
+	float4 *d_currentPixels = nullptr; // Gim
 	CUDA_CHECK( cudaMallocPitch(&d_currentPixels, &originalPixelsPitch,    srcPitch, imgHeight) );
 	CUDA_CHECK( cudaMemset2D(    d_currentPixels,  originalPixelsPitch, 0, srcPitch, imgHeight) );
-	float4 *d_scaledOutputPixels = NULL; // Gim3
+	float4 *d_scaledOutputPixels = nullptr; // Gim3
 	size_t scaledPixelsPitch = 0;
 	CUDA_CHECK( cudaMallocPitch(&d_scaledOutputPixels, &scaledPixelsPitch,    kEvoOutputScale*srcPitch, kEvoOutputScale*imgHeight) );
 	CUDA_CHECK( cudaMemset2D(    d_scaledOutputPixels,  scaledPixelsPitch, 0, kEvoOutputScale*srcPitch, kEvoOutputScale*imgHeight) );
@@ -162,12 +162,12 @@ int main(int argc, char *argv[])
 
 	// Index of triangle currently being updated
 	int32_t currentTriangleIndex = 0; // K
-	int32_t *d_currentTriangleIndex = NULL; // GK
+	int32_t *d_currentTriangleIndex = nullptr; // GK
 	CUDA_CHECK( cudaMalloc(&d_currentTriangleIndex, sizeof(int32_t)) );
 
 	// Current score of this iteration, and best score to date
 	float currentScore = FLT_MAX, bestScore = FLT_MAX;
-	float *d_currentScore = NULL; // Gscore
+	float *d_currentScore = nullptr; // Gscore
 	CUDA_CHECK( cudaMalloc(&d_currentScore, sizeof(float)) );
 	CUDA_CHECK( cudaMemcpy(d_currentScore, &currentScore, sizeof(float), cudaMemcpyHostToDevice) );
 
@@ -180,14 +180,14 @@ int main(int argc, char *argv[])
 	triangle *h_psoParticlesNhoodBestPos = (triangle*)malloc(kEvoPsoParticleCount*sizeof(triangle)); // nbest
 	float *h_psoParticlesNhoodBestFit    =    (float*)malloc(kEvoPsoParticleCount*sizeof(float));    // nbval
 	float psoParticlesGlobalBestFit      = FLT_MAX; // gbval
-	triangle *d_psoParticlesPos          = NULL;    // Gpos
-	triangle *d_psoParticlesVel          = NULL;    // Gvel
-	float *d_psoParticlesFit             = NULL;    // Gfit
-	triangle *d_psoParticlesLocalBestPos = NULL;    // Glbest
-	float *d_psoParticlesLocalBestFit    = NULL;    // Glbval
-	triangle *d_psoParticlesNhoodBestPos = NULL;    // Gnbest
-	float *d_psoParticlesNhoodBestFit    = NULL;    // Gnbval
-	float *d_psoParticlesGlobalBestFit   = NULL;    // Ggbval
+	triangle *d_psoParticlesPos          = nullptr;    // Gpos
+	triangle *d_psoParticlesVel          = nullptr;    // Gvel
+	float *d_psoParticlesFit             = nullptr;    // Gfit
+	triangle *d_psoParticlesLocalBestPos = nullptr;    // Glbest
+	float *d_psoParticlesLocalBestFit    = nullptr;    // Glbval
+	triangle *d_psoParticlesNhoodBestPos = nullptr;    // Gnbest
+	float *d_psoParticlesNhoodBestFit    = nullptr;    // Gnbval
+	float *d_psoParticlesGlobalBestFit   = nullptr;    // Ggbval
 	CUDA_CHECK( cudaMalloc(&d_psoParticlesPos,          kEvoPsoParticleCount*sizeof(triangle)) );
 	CUDA_CHECK( cudaMalloc(&d_psoParticlesVel,          kEvoPsoParticleCount*sizeof(triangle)) );
 	CUDA_CHECK( cudaMalloc(&d_psoParticlesFit,          kEvoPsoParticleCount*sizeof(float)) );
