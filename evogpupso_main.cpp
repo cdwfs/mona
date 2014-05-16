@@ -199,6 +199,17 @@ int main(int argc, char *argv[])
 
 	CpuTimer cpuTimer;
 	cpuTimer.Start();
+	const char *datFileName = "lisa.dat";
+	FILE *datFile = nullptr;
+	fopen_s(&datFile, datFileName, "w");
+	if (nullptr == datFile)
+	{
+		printf("Could not open '%s'\n", datFileName);
+		return -1;
+	}
+	fprintf(datFile, "# Input: %s\n", argv[1]);
+	fprintf(datFile, "# Date: %s\n", "today");
+	fprintf(datFile, "# Iteration:\tTime\tScore:\n");
 	for(int32_t iIter=1; iIter<=kEvoIterationCount; ++iIter)
 	{
 		// Choose a new random triangle to update
@@ -228,6 +239,7 @@ int main(int argc, char *argv[])
 		// Print output
 		cpuTimer.Update();
 		printf("%7.2fs (gen %4d): score = %.4f [best = %.4f]\n", cpuTimer.GetElapsedSeconds(), iIter, currentScore, bestScore);
+		fprintf(datFile, "%6d\t\t%7.2f\t%12.4f\n", iIter, cpuTimer.GetElapsedSeconds(), bestScore);
 
 		// texturize current solution
 		CUDA_CHECK( cudaBindTexture2D(&offset, currImg, d_currentPixels, &channelDesc, imgWidth, imgHeight, originalPixelsPitch) );
@@ -294,6 +306,7 @@ int main(int argc, char *argv[])
 
 	}
 
+	fclose(datFile);
 	free((void*)inputPixels);
 	cudaDeviceReset();
 }
