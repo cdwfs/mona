@@ -242,17 +242,8 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 			localsum += dot3(pixelDiff, pixelDiff) + lum*lum;
 		}
 	}
-	__shared__ float sums[kEvoBlockDim];
-	if(threadIdx.x == 0) sums[threadIdx.y] = 0.0f;
-	for(int i = 0; i < kEvoBlockDim; i++)
-		if(threadIdx.x ==i) sums[threadIdx.y] += localsum;
-	__syncthreads();
-	if(threadIdx.x+threadIdx.y == 0) {
-		for(int i = 0; i < kEvoBlockDim; i++) {
-			*sum += sums[i];
-		}
-	}
-	__syncthreads();
+
+	atomicAdd(sum, localsum); // Could do a more clever reduction than this, but it doesn't seem to be a bottleneck
 }
 
 
@@ -355,7 +346,6 @@ __global__ void render(float4 * im,
 					   int imgWidth,
 					   int imgHeight,
 					   int imgPitch) {
-	int sumsIndex = kEvoBlockDim*threadIdx.y + threadIdx.x;
 	// clear image
 	for(int y = threadIdx.y; y < imgHeight; y += kEvoBlockDim) {
 		for(int i = threadIdx.x; i < imgWidth; i += kEvoBlockDim) {
@@ -370,27 +360,21 @@ __global__ void render(float4 * im,
 		addtriangle(im, &curr[k], 1, (float)imgWidth, (float)imgHeight, imgPitch);
 
 	// score the image
-	__shared__ float sums[kEvoBlockDim*kEvoBlockDim];
-	sums[sumsIndex] = 0.0f;
+	float localsum = 0.0f;
 	for(int yy = threadIdx.y; yy < imgHeight; yy+=kEvoBlockDim) {
 		int g = yy*imgPitch + threadIdx.x;
 		for(int xx = threadIdx.x; xx < imgWidth; xx += kEvoBlockDim) {
 			float4 o = tex2D(refimg, xx, yy);
 			o.x -= im[g].x; o.y -= im[g].y; o.z -= im[g].z;
 			float lum = luminance(o);
-			sums[sumsIndex] += dot3(o, o) + lum*lum;
+			localsum += dot3(o, o) + lum*lum;
 			g += kEvoBlockDim;
 		}
 	}
-	__syncthreads();
-	*score = 0;
-	if(threadIdx.x+threadIdx.y == 0) {
-		for(int i = 0; i < kEvoBlockDim*kEvoBlockDim; i++) {
-			*score += sums[i];
-		}
-	}
+	atomicAdd(score, localsum);
 
 	// remove triangles we are modifying
+	__syncthreads();
 	addtriangle(im, &curr[*K], 0, (float)imgWidth, (float)imgHeight, imgPitch);
 }
 
@@ -475,7 +459,6 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, float imgW
 			g += kEvoBlockDim;
 		}
 	}
-	__syncthreads();
 }
 
 // similar to render, but for output. Also not worth looking at.
@@ -513,6 +496,7 @@ void getTextureReferences(const textureReference **outRefImg, const textureRefer
 
 void launch_render(float4 *d_im, triangle *d_curr, int *d_currentTriangleIndex, float *d_currentScore, int imgWidth, int imgHeight, int imgPitch)
 {
+	CUDA_CHECK( cudaMemset(d_currentScore, 0, sizeof(float)) );
 	dim3 gridDim(1,1);
 	dim3 blockDim(kEvoBlockDim, kEvoBlockDim);
 	render<<<gridDim, blockDim>>>(d_im, d_curr, d_currentTriangleIndex, d_currentScore, imgWidth, imgHeight, imgPitch);
