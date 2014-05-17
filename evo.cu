@@ -160,6 +160,9 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 	triColor.x = fmaf(kEvoAlphaLimit, triColor.x, -kEvoAlphaOffset);
 	triColor.y = fmaf(kEvoAlphaLimit, triColor.y, -kEvoAlphaOffset);
 	triColor.z = fmaf(kEvoAlphaLimit, triColor.z, -kEvoAlphaOffset);
+	triColor.x *= 0.30f;
+	triColor.y *= 0.59f;
+	triColor.z *= 0.11f;
 	
 	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value, yes, this is retarded
@@ -211,11 +214,12 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y1), 0.0f, imgWidth);
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
 			float4 pixelDiff = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
-			float lum = luminance(pixelDiff);
-			localsum -= dot3(pixelDiff, pixelDiff) + lum*lum;
+			pixelDiff.x *= 0.30f;
+			pixelDiff.y *= 0.59f;
+			pixelDiff.z *= 0.11f;
+			localsum -= dot3(pixelDiff, pixelDiff);
 			pixelDiff.x += triColor.x; pixelDiff.y += triColor.y; pixelDiff.z += triColor.z;
-			lum = luminance(pixelDiff);
-			localsum += dot3(pixelDiff, pixelDiff) + lum*lum;
+			localsum += dot3(pixelDiff, pixelDiff);
 		}
 	}
 	
@@ -235,11 +239,12 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
 			float4 pixelDiff = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
-			float lum = luminance(pixelDiff);
-			localsum -= dot3(pixelDiff, pixelDiff) + lum*lum;
+			pixelDiff.x *= 0.30f;
+			pixelDiff.y *= 0.59f;
+			pixelDiff.z *= 0.11f;
+			localsum -= dot3(pixelDiff, pixelDiff);
 			pixelDiff.x += triColor.x; pixelDiff.y += triColor.y; pixelDiff.z += triColor.z;
-			lum = luminance(pixelDiff);
-			localsum += dot3(pixelDiff, pixelDiff) + lum*lum;
+			localsum += dot3(pixelDiff, pixelDiff);
 		}
 	}
 
@@ -366,8 +371,10 @@ __global__ void render(float4 * im,
 		for(int xx = threadIdx.x; xx < imgWidth; xx += kEvoBlockDim) {
 			float4 o = tex2D(refimg, xx, yy);
 			o.x -= im[g].x; o.y -= im[g].y; o.z -= im[g].z;
-			float lum = luminance(o);
-			localsum += dot3(o, o) + lum*lum;
+			o.x *= 0.30f;
+			o.y *= 0.59f;
+			o.z *= 0.11f;
+			localsum += dot3(o, o);
 			g += kEvoBlockDim;
 		}
 	}
