@@ -26,6 +26,13 @@ evolve on my laptop's 650M:
 
 Change Log
 ----------
+ - 5/16/2014: I found a memory stomp introduced in one of my previous changes; hooray for Nsight! Fixing it
+   increased my register pressure and pushed me back to 50% occupancy, but noticeably improved long-term convergence quality.
+   I also keep better track of the best solution found so far, which further improves visual quality. I fixed a number of
+   race conditions in the per-thread-block score updates, but the algorithm is still flagrantly violating CUDA's "Thou Shalt
+   Not Share Data Directly Between Thread Blocks" rule; only a substantial rewrite will fix that. Finally, I tried tweaking
+   the image difference equation to ignore luminance. I'm not convinced it's a quality improvement, but between all these changes,
+   Lisa is looking *fine*.
  - 5/14/2014: Reading Ding & Robb's paper revealed some easy improvements, mostly having to do with parameter tuning. My neighborhood size
    and alpha limit were both too large, and appropriate values can apparently be determined as functions of particle count and
    triangle count respectively. The PSO dampening factor also seems to have two optimal values to choose from, depending on the preference
@@ -59,11 +66,12 @@ In no particular order; just listed here so I don't forget:
  - Investigate triangle selection method for each iteration. Currently, a triangle is selected randomly from the first iIter/2 entries.
    Would it be preferable to run each triangle at least once before random selection? Would it be helpful to sort the triangles by
    score or area, and favor the iteration of triangles whose current contribution to the final image is negligible?
- - The triangle rasterization loop could probably be improved. It's pretty branchy as-is. Dynamic Parallelism would probably help,
-   if I had a GPU that supported it.
  - The PSO kernel currently assigns one particle to each thread block, to process over all covered pixels. I wonder if it would be any
-   better to assign each thread block a region of pixels to process for all particles. My gut says no; it would probably turn each PSO
-   iteration into a separate kernel launch. But, something needs to be done about those texture stalls...
+   better to assign each thread block a region of pixels to process for all particles. My informal estimate is that this would cut
+   memory traffic to 1/6th of its current level, with a number of other advantages to boot.
+ - Continue to investigate improvements to the image difference method. The current squared-scaled-distance approach is probably
+   naive. Possible alternatives include [Root Mean Squared Deviation](http://en.wikipedia.org/wiki/RMSD) and
+   [Mean Structual Similarity](http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=230F49B56EF7810EBD8B84BD3ACF7815?doi=10.1.1.5.54&rep=rep1&type=pdf).
    
 Acknowledgements
 ----------------
