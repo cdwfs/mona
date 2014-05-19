@@ -155,17 +155,8 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
 	__shared__ int h1,h2,h3,swap,bad;
-	float3 triColor = make_float3(tri->r, tri->g, tri->b);
-	triColor.x = clip(triColor.x, 0.0f, 1.0f);
-	triColor.y = clip(triColor.y, 0.0f, 1.0f);
-	triColor.z = clip(triColor.z, 0.0f, 1.0f);
-	triColor.x = fmaf(kEvoAlphaLimit, triColor.x, -kEvoAlphaOffset);
-	triColor.y = fmaf(kEvoAlphaLimit, triColor.y, -kEvoAlphaOffset);
-	triColor.z = fmaf(kEvoAlphaLimit, triColor.z, -kEvoAlphaOffset);
-	triColor.x *= 0.30f;
-	triColor.y *= 0.59f;
-	triColor.z *= 0.11f;
-	
+	__shared__ float3 triColor, triColorScaled;
+
 	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value, yes, this is retarded
 		bad = 0;
@@ -205,6 +196,16 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 		h1 = clip(imgHeight * y1, 0.0f, imgHeight);
 		h2 = clip(imgHeight * y2, 0.0f, imgHeight);
 		h3 = clip(imgHeight * y3, 0.0f, imgHeight);
+		triColor = make_float3(tri->r, tri->g, tri->b);
+		triColor.x = clip(triColor.x, 0.0f, 1.0f);
+		triColor.y = clip(triColor.y, 0.0f, 1.0f);
+		triColor.z = clip(triColor.z, 0.0f, 1.0f);
+		triColor.x = fmaf(kEvoAlphaLimit, triColor.x, -kEvoAlphaOffset);
+		triColor.y = fmaf(kEvoAlphaLimit, triColor.y, -kEvoAlphaOffset);
+		triColor.z = fmaf(kEvoAlphaLimit, triColor.z, -kEvoAlphaOffset);
+		triColorScaled.x = triColor.x * 0.30f;
+		triColorScaled.y = triColor.y * 0.59f;
+		triColorScaled.z = triColor.z * 0.11f;
 	}
 	__syncthreads();
 	if(bad) {*sum = FLT_MAX; return;}
@@ -220,7 +221,7 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 			pixelDiff.y *= 0.59f;
 			pixelDiff.z *= 0.11f;
 			localsum -= dot3(pixelDiff, pixelDiff);
-			pixelDiff.x += triColor.x; pixelDiff.y += triColor.y; pixelDiff.z += triColor.z;
+			pixelDiff.x += triColorScaled.x; pixelDiff.y += triColorScaled.y; pixelDiff.z += triColorScaled.z;
 			localsum += dot3(pixelDiff, pixelDiff);
 		}
 	}
@@ -245,7 +246,7 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 			pixelDiff.y *= 0.59f;
 			pixelDiff.z *= 0.11f;
 			localsum -= dot3(pixelDiff, pixelDiff);
-			pixelDiff.x += triColor.x; pixelDiff.y += triColor.y; pixelDiff.z += triColor.z;
+			pixelDiff.x += triColorScaled.x; pixelDiff.y += triColorScaled.y; pixelDiff.z += triColorScaled.z;
 			localsum += dot3(pixelDiff, pixelDiff);
 		}
 	}
