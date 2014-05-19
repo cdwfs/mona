@@ -537,6 +537,7 @@ void launch_run(triangle *d_curr, triangle *d_pos, triangle *d_vel, float *d_fit
 {
 	dim3 gridDim(kEvoPsoParticleCount, 1);
 	dim3 blockDim(kEvoBlockDim, kEvoBlockDim, 1);
+	//CUDA_CHECK( cudaFuncSetCacheConfig(run, cudaFuncCachePreferL1) ); // No significant difference observed, but this kernel certainly doesn't use smem
 	run<<<gridDim, blockDim>>>(d_curr, d_pos, d_vel, d_fit, d_lbest, d_lbval, d_nbest, d_nbval, d_gbval, d_K, (float)imgWidth, (float)imgHeight);
 	CUDA_CHECK( cudaGetLastError() );
 }
