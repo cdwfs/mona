@@ -28,6 +28,16 @@ inline __host__ __device__ float4 operator-(float4 a, float4 b)
 texture<float4, cudaTextureType2D, cudaReadModeElementType> currimg;  // current image rendered in triangles
 texture<float4, cudaTextureType2D, cudaReadModeElementType> refimg; // original reference image
 
+__constant__ float dkEvoAlphaLimit;
+__constant__ float dkEvoAlphaOffset;
+__constant__ int dkEvoCheckLimit;
+__constant__ int dkEvoPsoParticleCount;
+__constant__ int dkEvoPsoIterationCount;
+__constant__ int dkEvoMaxTriangleCount;
+__constant__ int dkEvoPsoNeighborhoodSize;
+__constant__ float dkEvoPsoSpringConstant;
+__constant__ float dkEvoPsoDampeningFactor;
+
 
 // adds a triangle to the working image, or subtracts it if add==0
 inline   __device__  void addtriangle(float4 * img, triangle * tri, bool add, float imgWidth, float imgHeight, int imgPitch)
@@ -51,9 +61,9 @@ inline   __device__  void addtriangle(float4 * img, triangle * tri, bool add, fl
 	}
 	
 	//set to alpha values that we are using 
-	triColor.x = fmaf(kEvoAlphaLimit, triColor.x, -kEvoAlphaOffset);
-	triColor.y = fmaf(kEvoAlphaLimit, triColor.y, -kEvoAlphaOffset);
-	triColor.z = fmaf(kEvoAlphaLimit, triColor.z, -kEvoAlphaOffset);
+	triColor.x = fmaf(dkEvoAlphaLimit, triColor.x, -dkEvoAlphaOffset);
+	triColor.y = fmaf(dkEvoAlphaLimit, triColor.y, -dkEvoAlphaOffset);
+	triColor.z = fmaf(dkEvoAlphaLimit, triColor.z, -dkEvoAlphaOffset);
 	
 	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value so that we can render triangles properly
@@ -192,9 +202,9 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 		triColor.x = clip(triColor.x, 0.0f, 1.0f);
 		triColor.y = clip(triColor.y, 0.0f, 1.0f);
 		triColor.z = clip(triColor.z, 0.0f, 1.0f);
-		triColor.x = fmaf(kEvoAlphaLimit, triColor.x, -kEvoAlphaOffset);
-		triColor.y = fmaf(kEvoAlphaLimit, triColor.y, -kEvoAlphaOffset);
-		triColor.z = fmaf(kEvoAlphaLimit, triColor.z, -kEvoAlphaOffset);
+		triColor.x = fmaf(dkEvoAlphaLimit, triColor.x, -dkEvoAlphaOffset);
+		triColor.y = fmaf(dkEvoAlphaLimit, triColor.y, -dkEvoAlphaOffset);
+		triColor.z = fmaf(dkEvoAlphaLimit, triColor.z, -dkEvoAlphaOffset);
 	}
 	__syncthreads();
 	if(bad) {*sum = FLT_MAX; return;}
@@ -287,7 +297,7 @@ __global__ void run(triangle * curr,   //D (triangles)
 
 
 	// loop over pso updates
-	for(int q = 0; q < kEvoPsoIterationCount; q++) {
+	for(int q = 0; q < dkEvoPsoIterationCount; q++) {
 
 		// integrate position
 		if(q > 0 && threadIdx.y==0 && threadIdx.x < 10) {
@@ -297,9 +307,9 @@ __global__ void run(triangle * curr,   //D (triangles)
 			float * p = (((float *) &pos[blockIdx.x]) + threadIdx.x);
 			float * l = (((float *) &lbest[blockIdx.x]) + threadIdx.x);
 			float * n = (((float *) &nbest[blockIdx.x]) + threadIdx.x);
-			*v *= kEvoPsoDampeningFactor;
-			*v += kEvoPsoSpringConstant * rand() * (*n - *p);
-			*v += kEvoPsoSpringConstant * rand() * (*l - *p);
+			*v *= dkEvoPsoDampeningFactor;
+			*v += dkEvoPsoSpringConstant * rand() * (*n - *p);
+			*v += dkEvoPsoSpringConstant * rand() * (*l - *p);
 			*v = max(*v, vmin);
 			*v = min(*v, vmax);
 			*p = *p + *v;
@@ -336,16 +346,16 @@ __global__ void run(triangle * curr,   //D (triangles)
 			float v;
 			int b;
 			b = blockIdx.x;
-			v = nbval[b % kEvoPsoParticleCount];
-			for(int j = 0; j < kEvoPsoNeighborhoodSize; j++) {
-				if(lbval[(blockIdx.x + j) % kEvoPsoParticleCount] < v) {
-					v = lbval[(blockIdx.x + j) % kEvoPsoParticleCount];
+			v = nbval[b % dkEvoPsoParticleCount];
+			for(int j = 0; j < dkEvoPsoNeighborhoodSize; j++) {
+				if(lbval[(blockIdx.x + j) % dkEvoPsoParticleCount] < v) {
+					v = lbval[(blockIdx.x + j) % dkEvoPsoParticleCount];
 					b = blockIdx.x + j;
 				}
 			}
 			if(v < nbval[blockIdx.x]) {
 				nbval[blockIdx.x] = v;
-				nbest[blockIdx.x] = lbest[b % kEvoPsoParticleCount];
+				nbest[blockIdx.x] = lbest[b % dkEvoPsoParticleCount];
 			}	
 			// hack to improve early PSO convergence (is this D&R's "local best reduction"?)
 			else if(lbval[blockIdx.x] > 0) 
@@ -353,7 +363,7 @@ __global__ void run(triangle * curr,   //D (triangles)
 
 		}
 		// exit if PSO stagnates
-		if(check > kEvoCheckLimit) return;
+		if(check > dkEvoCheckLimit) return;
 		__syncthreads();
 	}
 
@@ -377,7 +387,7 @@ __global__ void render(float4 * im,
 		}
 	}
 	// render all triangles
-	for(int k = 0; k < kEvoMaxTriangleCount; k++)
+	for(int k = 0; k < dkEvoMaxTriangleCount; k++)
 		addtriangle(im, &curr[k], 1, (float)imgWidth, (float)imgHeight, imgPitch);
 
 	// score the image
@@ -452,9 +462,9 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, float imgW
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y1), 0.0f, imgWidth);
 		int g = imgPitch * yy + xStart;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			im[g].x += fmaf(kEvoAlphaLimit, T->r, -kEvoAlphaOffset);
-			im[g].y += fmaf(kEvoAlphaLimit, T->g, -kEvoAlphaOffset);
-			im[g].z += fmaf(kEvoAlphaLimit, T->b, -kEvoAlphaOffset);
+			im[g].x += fmaf(dkEvoAlphaLimit, T->r, -dkEvoAlphaOffset);
+			im[g].y += fmaf(dkEvoAlphaLimit, T->g, -dkEvoAlphaOffset);
+			im[g].z += fmaf(dkEvoAlphaLimit, T->b, -dkEvoAlphaOffset);
 			g += kEvoBlockDim;
 		}
 
@@ -473,9 +483,9 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, float imgW
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
 		int g = imgPitch * yy + xStart;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			im[g].x += fmaf(kEvoAlphaLimit, T->r, -kEvoAlphaOffset);
-			im[g].y += fmaf(kEvoAlphaLimit, T->g, -kEvoAlphaOffset);
-			im[g].z += fmaf(kEvoAlphaLimit, T->b, -kEvoAlphaOffset);
+			im[g].x += fmaf(dkEvoAlphaLimit, T->r, -dkEvoAlphaOffset);
+			im[g].y += fmaf(dkEvoAlphaLimit, T->g, -dkEvoAlphaOffset);
+			im[g].z += fmaf(dkEvoAlphaLimit, T->b, -dkEvoAlphaOffset);
 			g += kEvoBlockDim;
 		}
 	}
@@ -493,7 +503,7 @@ __global__ void renderproof(float4 * im, triangle * curr, int imgWidth, int imgH
 			g += kEvoBlockDim;
 		}
 	}
-	for(int k = 0; k < kEvoMaxTriangleCount; k++)
+	for(int k = 0; k < dkEvoMaxTriangleCount; k++)
 		addtriangleproof(im, &curr[k], (float)imgWidth, (float)imgHeight, imgPitch);
 
 	for(int yy = threadIdx.y; yy < imgHeight; yy+=kEvoBlockDim) {
@@ -514,6 +524,47 @@ void getTextureReferences(const textureReference **outRefImg, const textureRefer
 	CUDA_CHECK( cudaGetTextureReference(outCurrImg, &currimg) );
 }
 
+void setGpuConstants(const PsoConstants *constants)
+{
+	size_t destSize = 0;
+
+	CUDA_CHECK( cudaGetSymbolSize(&destSize, dkEvoAlphaLimit) );
+	assert( destSize == sizeof(float) );
+	CUDA_CHECK( cudaMemcpyToSymbol(dkEvoAlphaLimit, &(constants->alphaLimit), destSize) );
+
+	CUDA_CHECK( cudaGetSymbolSize(&destSize, dkEvoAlphaOffset) );
+	assert( destSize == sizeof(float) );
+	CUDA_CHECK( cudaMemcpyToSymbol(dkEvoAlphaOffset, &(constants->alphaOffset), destSize) );
+
+	CUDA_CHECK( cudaGetSymbolSize(&destSize, dkEvoCheckLimit) );
+	assert( destSize == sizeof(int32_t) );
+	CUDA_CHECK( cudaMemcpyToSymbol(dkEvoCheckLimit, &(constants->checkLimit), destSize) );
+
+	CUDA_CHECK( cudaGetSymbolSize(&destSize, dkEvoPsoParticleCount) );
+	assert( destSize == sizeof(int32_t) );
+	CUDA_CHECK( cudaMemcpyToSymbol(dkEvoPsoParticleCount, &(constants->psoParticleCount), destSize) );
+
+	CUDA_CHECK( cudaGetSymbolSize(&destSize, dkEvoPsoIterationCount) );
+	assert( destSize == sizeof(int32_t) );
+	CUDA_CHECK( cudaMemcpyToSymbol(dkEvoPsoIterationCount, &(constants->psoIterationCount), destSize) );
+
+	CUDA_CHECK( cudaGetSymbolSize(&destSize, dkEvoMaxTriangleCount) );
+	assert( destSize == sizeof(int32_t) );
+	CUDA_CHECK( cudaMemcpyToSymbol(dkEvoMaxTriangleCount, &(constants->maxTriangleCount), destSize) );
+
+	CUDA_CHECK( cudaGetSymbolSize(&destSize, dkEvoPsoNeighborhoodSize) );
+	assert( destSize == sizeof(int32_t) );
+	CUDA_CHECK( cudaMemcpyToSymbol(dkEvoPsoNeighborhoodSize, &(constants->psoNeighborhoodSize), destSize) );
+
+	CUDA_CHECK( cudaGetSymbolSize(&destSize, dkEvoPsoSpringConstant) );
+	assert( destSize == sizeof(float) );
+	CUDA_CHECK( cudaMemcpyToSymbol(dkEvoPsoSpringConstant, &(constants->psoSpringConstant), destSize) );
+
+	CUDA_CHECK( cudaGetSymbolSize(&destSize, dkEvoPsoDampeningFactor) );
+	assert( destSize == sizeof(float) );
+	CUDA_CHECK( cudaMemcpyToSymbol(dkEvoPsoDampeningFactor, &(constants->psoDampeningFactor), destSize) );
+}
+
 void launch_render(float4 *d_im, triangle *d_curr, int *d_currentTriangleIndex, float *d_currentScore, int imgWidth, int imgHeight, int imgPitch)
 {
 	CUDA_CHECK( cudaMemset(d_currentScore, 0, sizeof(float)) );
@@ -531,11 +582,11 @@ void launch_renderproof(float4 * d_im, triangle * d_curr, int imgWidth, int imgH
 	CUDA_CHECK( cudaGetLastError() );
 }
 
-void launch_run(triangle *d_curr, triangle *d_pos, triangle *d_vel, float *d_fit,
+void launch_run(int32_t particleCount, triangle *d_curr, triangle *d_pos, triangle *d_vel, float *d_fit,
 	triangle *d_lbest, float *d_lbval, triangle *d_nbest, float *d_nbval, float *d_gbval,
 	int *d_K, int imgWidth, int imgHeight)
 {
-	dim3 gridDim(kEvoPsoParticleCount, 1);
+	dim3 gridDim(particleCount, 1);
 	dim3 blockDim(kEvoBlockDim, kEvoBlockDim, 1);
 	//CUDA_CHECK( cudaFuncSetCacheConfig(run, cudaFuncCachePreferL1) ); // No significant difference observed, but this kernel certainly doesn't use smem
 	run<<<gridDim, blockDim>>>(d_curr, d_pos, d_vel, d_fit, d_lbest, d_lbval, d_nbest, d_nbval, d_gbval, d_K, (float)imgWidth, (float)imgHeight);

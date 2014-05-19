@@ -17,10 +17,11 @@
 #include <ctime>
 
 // From evo.cu
-void getTextureReferences(const textureReference **outRefImg, const textureReference **outCurrImg);
-void launch_render(float4 *d_im, triangle *d_curr, int *d_currentTriangleIndex, float *d_currentScore, int imgWidth, int imgHeight, int imgPitch);
-void launch_renderproof(float4 * d_im, triangle * d_curr, int imgWidth, int imgHeight, int imgPitch);
-void launch_run(triangle *d_curr, triangle *d_pos, triangle *d_vel, float *d_fit,
+extern void getTextureReferences(const textureReference **outRefImg, const textureReference **outCurrImg);
+extern void setGpuConstants(const PsoConstants *constants);
+extern void launch_render(float4 *d_im, triangle *d_curr, int *d_currentTriangleIndex, float *d_currentScore, int imgWidth, int imgHeight, int imgPitch);
+extern void launch_renderproof(float4 * d_im, triangle * d_curr, int imgWidth, int imgHeight, int imgPitch);
+extern void launch_run(int32_t particleCount, triangle *d_curr, triangle *d_pos, triangle *d_vel, float *d_fit,
 	triangle *d_lbest, float *d_lbval, triangle *d_nbest, float *d_nbval, float *d_gbval,
 	int *d_K, int imgWidth, int imgHeight);
 
@@ -93,6 +94,19 @@ int main(int argc, char *argv[])
 	const int32_t kEvoPsoGridDim = 4 * deviceMpCount * deviceMaxPsoBlocksPerMp;
 	(void)kEvoPsoGridDim;
 
+	PsoConstants constants = {};
+	constants.iterationCount      = kEvoIterationCountDefault;
+	constants.alphaLimit          = kEvoAlphaLimitDefault;
+	constants.alphaOffset         = kEvoAlphaOffsetDefault;
+	constants.checkLimit          = kEvoCheckLimitDefault;
+	constants.outputScale         = kEvoOutputScaleDefault;
+	constants.psoParticleCount    = kEvoPsoParticleCountDefault;
+	constants.psoIterationCount   = kEvoPsoIterationCountDefault;
+	constants.maxTriangleCount    = kEvoMaxTriangleCountDefault;
+	constants.psoNeighborhoodSize = kEvoPsoNeighborhoodSizeDefault;
+	constants.psoSpringConstant   = kEvoPsoSpringConstantDefault;
+	constants.psoDampeningFactor  = kEvoPsoDampeningFactorDefault;
+
 	if (argc != 2)
 	{
 		printf("Usage: %s in.???\n", argv[0]);
@@ -138,16 +152,16 @@ int main(int argc, char *argv[])
 	CUDA_CHECK( cudaBindTexture2D(&offset, refImg, d_originalPixels, &channelDesc, imgWidth, imgHeight, originalPixelsPitch) );
 
 	// Create array of solution triangles
-	triangle *h_currentTriangles = (triangle*)malloc(kEvoMaxTriangleCount*sizeof(triangle)); // curr
-	memset(h_currentTriangles, 0, kEvoMaxTriangleCount*sizeof(triangle));
+	triangle *h_currentTriangles = (triangle*)malloc(constants.maxTriangleCount*sizeof(triangle)); // curr
+	memset(h_currentTriangles, 0, constants.maxTriangleCount*sizeof(triangle));
 	triangle *d_currentTriangles = nullptr; // Gcurr
-	CUDA_CHECK( cudaMalloc(&d_currentTriangles,    kEvoMaxTriangleCount*sizeof(triangle)) );
-	CUDA_CHECK( cudaMemset( d_currentTriangles, 0, kEvoMaxTriangleCount*sizeof(triangle)) );
-	triangle *h_bestTriangles = (triangle*)malloc(kEvoMaxTriangleCount*sizeof(triangle)); // oldCurr
-	memcpy(h_bestTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle));
+	CUDA_CHECK( cudaMalloc(&d_currentTriangles,    constants.maxTriangleCount*sizeof(triangle)) );
+	CUDA_CHECK( cudaMemset( d_currentTriangles, 0, constants.maxTriangleCount*sizeof(triangle)) );
+	triangle *h_bestTriangles = (triangle*)malloc(constants.maxTriangleCount*sizeof(triangle)); // oldCurr
+	memcpy(h_bestTriangles, h_currentTriangles, constants.maxTriangleCount*sizeof(triangle));
 	triangle *d_bestTriangles = nullptr;
-	CUDA_CHECK( cudaMalloc(&d_bestTriangles, kEvoMaxTriangleCount*sizeof(triangle)) );
-	CUDA_CHECK( cudaMemcpy( d_bestTriangles, d_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
+	CUDA_CHECK( cudaMalloc(&d_bestTriangles, constants.maxTriangleCount*sizeof(triangle)) );
+	CUDA_CHECK( cudaMemcpy( d_bestTriangles, d_currentTriangles, constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
 
 
 	// Rendered solution on the GPU (and scaled-up version for final output)
@@ -156,10 +170,10 @@ int main(int argc, char *argv[])
 	CUDA_CHECK( cudaMemset2D(    d_currentPixels,  originalPixelsPitch, 0, srcPitch, imgHeight) );
 	float4 *d_scaledOutputPixels = nullptr; // Gim3
 	size_t scaledPixelsPitch = 0;
-	CUDA_CHECK( cudaMallocPitch(&d_scaledOutputPixels, &scaledPixelsPitch,    kEvoOutputScale*srcPitch, kEvoOutputScale*imgHeight) );
-	CUDA_CHECK( cudaMemset2D(    d_scaledOutputPixels,  scaledPixelsPitch, 0, kEvoOutputScale*srcPitch, kEvoOutputScale*imgHeight) );
-	float4 *h_scaledOutputPixels   =   (float4*)malloc(kEvoOutputScale*imgWidth*kEvoOutputScale*imgHeight*sizeof(float4));
-	uint32_t *scaledOutputRgba8888 = (uint32_t*)malloc(kEvoOutputScale*imgWidth*kEvoOutputScale*imgHeight*sizeof(uint32_t));
+	CUDA_CHECK( cudaMallocPitch(&d_scaledOutputPixels, &scaledPixelsPitch,    constants.outputScale*srcPitch, constants.outputScale*imgHeight) );
+	CUDA_CHECK( cudaMemset2D(    d_scaledOutputPixels,  scaledPixelsPitch, 0, constants.outputScale*srcPitch, constants.outputScale*imgHeight) );
+	float4 *h_scaledOutputPixels   =   (float4*)malloc(constants.outputScale*imgWidth*constants.outputScale*imgHeight*sizeof(float4));
+	uint32_t *scaledOutputRgba8888 = (uint32_t*)malloc(constants.outputScale*imgWidth*constants.outputScale*imgHeight*sizeof(uint32_t));
 
 	// Index of triangle currently being updated
 	int32_t currentTriangleIndex = 0; // K
@@ -173,14 +187,14 @@ int main(int argc, char *argv[])
 	CUDA_CHECK( cudaMemcpy(d_currentScore, &currentScore, sizeof(float), cudaMemcpyHostToDevice) );
 
 	// PSO arrays
-	triangle *h_psoParticlesPos = (triangle*)malloc(kEvoPsoParticleCount*sizeof(triangle)); // pos
-	triangle *h_psoParticlesVel = (triangle*)malloc(kEvoPsoParticleCount*sizeof(triangle)); // vel
-	float *h_psoParticlesFit    =    (float*)malloc(kEvoPsoParticleCount*sizeof(float));    // fit
-	triangle *h_psoParticlesLocalBestPos = (triangle*)malloc(kEvoPsoParticleCount*sizeof(triangle)); // lbest
-	float *h_psoParticlesLocalBestFit    =    (float*)malloc(kEvoPsoParticleCount*sizeof(float));    // lbval
-	triangle *h_psoParticlesNhoodBestPos = (triangle*)malloc(kEvoPsoParticleCount*sizeof(triangle)); // nbest
-	float *h_psoParticlesNhoodBestFit    =    (float*)malloc(kEvoPsoParticleCount*sizeof(float));    // nbval
-	float psoParticlesGlobalBestFit      = FLT_MAX; // gbval
+	triangle *h_psoParticlesPos          = (triangle*)malloc(constants.psoParticleCount*sizeof(triangle)); // pos
+	triangle *h_psoParticlesVel          = (triangle*)malloc(constants.psoParticleCount*sizeof(triangle)); // vel
+	float *h_psoParticlesFit             =    (float*)malloc(constants.psoParticleCount*sizeof(float));    // fit
+	triangle *h_psoParticlesLocalBestPos = (triangle*)malloc(constants.psoParticleCount*sizeof(triangle)); // lbest
+	float *h_psoParticlesLocalBestFit    =    (float*)malloc(constants.psoParticleCount*sizeof(float));    // lbval
+	triangle *h_psoParticlesNhoodBestPos = (triangle*)malloc(constants.psoParticleCount*sizeof(triangle)); // nbest
+	float *h_psoParticlesNhoodBestFit    =    (float*)malloc(constants.psoParticleCount*sizeof(float));    // nbval
+	float psoParticlesGlobalBestFit      = FLT_MAX;    // gbval
 	triangle *d_psoParticlesPos          = nullptr;    // Gpos
 	triangle *d_psoParticlesVel          = nullptr;    // Gvel
 	float *d_psoParticlesFit             = nullptr;    // Gfit
@@ -189,14 +203,17 @@ int main(int argc, char *argv[])
 	triangle *d_psoParticlesNhoodBestPos = nullptr;    // Gnbest
 	float *d_psoParticlesNhoodBestFit    = nullptr;    // Gnbval
 	float *d_psoParticlesGlobalBestFit   = nullptr;    // Ggbval
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesPos,          kEvoPsoParticleCount*sizeof(triangle)) );
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesVel,          kEvoPsoParticleCount*sizeof(triangle)) );
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesFit,          kEvoPsoParticleCount*sizeof(float)) );
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesLocalBestPos, kEvoPsoParticleCount*sizeof(triangle)) );
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesLocalBestFit, kEvoPsoParticleCount*sizeof(float)) );
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesNhoodBestPos, kEvoPsoParticleCount*sizeof(triangle)) );
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesNhoodBestFit, kEvoPsoParticleCount*sizeof(float)) );
+	CUDA_CHECK( cudaMalloc(&d_psoParticlesPos,          constants.psoParticleCount*sizeof(triangle)) );
+	CUDA_CHECK( cudaMalloc(&d_psoParticlesVel,          constants.psoParticleCount*sizeof(triangle)) );
+	CUDA_CHECK( cudaMalloc(&d_psoParticlesFit,          constants.psoParticleCount*sizeof(float)) );
+	CUDA_CHECK( cudaMalloc(&d_psoParticlesLocalBestPos, constants.psoParticleCount*sizeof(triangle)) );
+	CUDA_CHECK( cudaMalloc(&d_psoParticlesLocalBestFit, constants.psoParticleCount*sizeof(float)) );
+	CUDA_CHECK( cudaMalloc(&d_psoParticlesNhoodBestPos, constants.psoParticleCount*sizeof(triangle)) );
+	CUDA_CHECK( cudaMalloc(&d_psoParticlesNhoodBestFit, constants.psoParticleCount*sizeof(float)) );
 	CUDA_CHECK( cudaMalloc(&d_psoParticlesGlobalBestFit,                     sizeof(float)) );
+
+	// Upload constants to GPU
+	setGpuConstants(&constants);
 
 	CpuTimer cpuTimer;
 	cpuTimer.Start();
@@ -211,10 +228,10 @@ int main(int argc, char *argv[])
 	fprintf(datFile, "# Input: %s\n", argv[1]);
 	fprintf(datFile, "# Date: %s\n", "today");
 	fprintf(datFile, "# Iteration:\tTime (sec)\tPSNR (dB):\n");
-	for(int32_t iIter=1; iIter<=kEvoIterationCount; ++iIter)
+	for(int32_t iIter=1; iIter<=constants.iterationCount; ++iIter)
 	{
 		// Choose a new random triangle to update
-		currentTriangleIndex = rand() % min((iIter+1)/2, kEvoMaxTriangleCount);
+		currentTriangleIndex = rand() % min((iIter+1)/2, constants.maxTriangleCount);
 		CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(int32_t), cudaMemcpyHostToDevice) );
 
 		// Render initial solution
@@ -223,10 +240,10 @@ int main(int argc, char *argv[])
 		CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 
 		// check that this isn't a huge regression, revert and pick new K if so
-		if (currentScore * (1.0f - 2.0f / (float)kEvoMaxTriangleCount) > bestScore)
+		if (currentScore * (1.0f - 2.0f / (float)constants.maxTriangleCount) > bestScore)
 		{
-			memcpy(h_currentTriangles, h_bestTriangles, kEvoMaxTriangleCount*sizeof(triangle));
-			CUDA_CHECK( cudaMemcpy(d_currentTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
+			memcpy(h_currentTriangles, h_bestTriangles, constants.maxTriangleCount*sizeof(triangle));
+			CUDA_CHECK( cudaMemcpy(d_currentTriangles, h_currentTriangles, constants.maxTriangleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
 			launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore, imgWidth, imgHeight, originalPixelsPitch/sizeof(float4));
 			CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 		}
@@ -235,7 +252,7 @@ int main(int argc, char *argv[])
 		{
 			bestScore = currentScore;
 			// Update best known solution
-			memcpy(h_bestTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle));
+			memcpy(h_bestTriangles, h_currentTriangles, constants.maxTriangleCount*sizeof(triangle));
 		}
 		// Print output
 		const float mse = bestScore / (float)(3*imgWidth*imgHeight);
@@ -248,7 +265,7 @@ int main(int argc, char *argv[])
 		CUDA_CHECK( cudaBindTexture2D(&offset, currImg, d_currentPixels, &channelDesc, imgWidth, imgHeight, originalPixelsPitch) );
 
 		// create random data for this PSO iter, and send to device
-		for(int32_t iParticle=0; iParticle<kEvoPsoParticleCount; ++iParticle)
+		for(int32_t iParticle=0; iParticle<constants.psoParticleCount; ++iParticle)
 		{
 			randomizeTrianglePos(h_psoParticlesPos+iParticle);
 			randomizeTriangleVel(h_psoParticlesVel+iParticle);
@@ -259,33 +276,33 @@ int main(int argc, char *argv[])
 			h_psoParticlesNhoodBestFit[iParticle] = FLT_MAX;
 		}
 		psoParticlesGlobalBestFit = FLT_MAX;
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesPos, h_psoParticlesPos, kEvoPsoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesVel, h_psoParticlesVel, kEvoPsoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesFit, h_psoParticlesFit, kEvoPsoParticleCount*sizeof(float), cudaMemcpyHostToDevice) );
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesLocalBestPos, h_psoParticlesLocalBestPos, kEvoPsoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesLocalBestFit, h_psoParticlesLocalBestFit, kEvoPsoParticleCount*sizeof(float), cudaMemcpyHostToDevice) );
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesNhoodBestPos, h_psoParticlesNhoodBestPos, kEvoPsoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesNhoodBestFit, h_psoParticlesNhoodBestFit, kEvoPsoParticleCount*sizeof(float), cudaMemcpyHostToDevice) );
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesGlobalBestFit, &psoParticlesGlobalBestFit, sizeof(float), cudaMemcpyHostToDevice) );
+		CUDA_CHECK( cudaMemcpy(d_psoParticlesPos,          h_psoParticlesPos,          constants.psoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
+		CUDA_CHECK( cudaMemcpy(d_psoParticlesVel,          h_psoParticlesVel,          constants.psoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
+		CUDA_CHECK( cudaMemcpy(d_psoParticlesFit,          h_psoParticlesFit,          constants.psoParticleCount*sizeof(float),    cudaMemcpyHostToDevice) );
+		CUDA_CHECK( cudaMemcpy(d_psoParticlesLocalBestPos, h_psoParticlesLocalBestPos, constants.psoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
+		CUDA_CHECK( cudaMemcpy(d_psoParticlesLocalBestFit, h_psoParticlesLocalBestFit, constants.psoParticleCount*sizeof(float),    cudaMemcpyHostToDevice) );
+		CUDA_CHECK( cudaMemcpy(d_psoParticlesNhoodBestPos, h_psoParticlesNhoodBestPos, constants.psoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
+		CUDA_CHECK( cudaMemcpy(d_psoParticlesNhoodBestFit, h_psoParticlesNhoodBestFit, constants.psoParticleCount*sizeof(float),    cudaMemcpyHostToDevice) );
+		CUDA_CHECK( cudaMemcpy(d_psoParticlesGlobalBestFit, &psoParticlesGlobalBestFit,                         1*sizeof(float),    cudaMemcpyHostToDevice) );
 
 		// run the pso kernel! the big one!
-		launch_run(d_currentTriangles, d_psoParticlesPos, d_psoParticlesVel, d_psoParticlesFit,
+		launch_run(constants.psoParticleCount, d_currentTriangles, d_psoParticlesPos, d_psoParticlesVel, d_psoParticlesFit,
 			d_psoParticlesLocalBestPos, d_psoParticlesLocalBestFit,
 			d_psoParticlesNhoodBestPos, d_psoParticlesNhoodBestFit,
 			d_psoParticlesGlobalBestFit,
 			d_currentTriangleIndex, imgWidth, imgHeight);
 
 		// Copy current solution back to host
-		CUDA_CHECK( cudaMemcpy(h_currentTriangles, d_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToHost) );
+		CUDA_CHECK( cudaMemcpy(h_currentTriangles, d_currentTriangles, constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToHost) );
 
 		// Visual output
 		if ((iIter % 100) == 0)
 		{
-			CUDA_CHECK( cudaMemcpy(d_bestTriangles, d_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
-			launch_renderproof(d_scaledOutputPixels, d_bestTriangles, kEvoOutputScale*imgWidth, kEvoOutputScale*imgHeight, scaledPixelsPitch/sizeof(float4));
-			CUDA_CHECK( cudaMemcpy2D(h_scaledOutputPixels,  kEvoOutputScale*srcPitch, d_scaledOutputPixels, scaledPixelsPitch, kEvoOutputScale*srcPitch, kEvoOutputScale*imgHeight, cudaMemcpyDeviceToHost) );
+			CUDA_CHECK( cudaMemcpy(d_bestTriangles, d_currentTriangles, constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
+			launch_renderproof(d_scaledOutputPixels, d_bestTriangles, constants.outputScale*imgWidth, constants.outputScale*imgHeight, scaledPixelsPitch/sizeof(float4));
+			CUDA_CHECK( cudaMemcpy2D(h_scaledOutputPixels,  constants.outputScale*srcPitch, d_scaledOutputPixels, scaledPixelsPitch, constants.outputScale*srcPitch, constants.outputScale*imgHeight, cudaMemcpyDeviceToHost) );
 			// Convert to RGBA8888 for output
-			for(int32_t iPixel=0; iPixel<kEvoOutputScale*imgWidth*kEvoOutputScale*imgHeight; ++iPixel)
+			for(int32_t iPixel=0; iPixel<constants.outputScale*imgWidth*constants.outputScale*imgHeight; ++iPixel)
 			{
 				scaledOutputRgba8888[iPixel] =
 					( uint32_t(clamp(h_scaledOutputPixels[iPixel].x * 255.0f, 0.0f, 255.0f)) <<  0 ) |
@@ -298,8 +315,8 @@ int main(int argc, char *argv[])
 			_snprintf_s(outImageFileName, 127, "./temp_images/%04d%s", iIter, argv[1]);
 			outImageFileName[127] = 0;
 			printf("Writing '%s'...\n", outImageFileName);
-			int32_t writeError = stbi_write_png(outImageFileName, kEvoOutputScale*imgWidth, kEvoOutputScale*imgHeight,
-				4, scaledOutputRgba8888, kEvoOutputScale*imgWidth*sizeof(uint32_t));
+			int32_t writeError = stbi_write_png(outImageFileName, constants.outputScale*imgWidth, constants.outputScale*imgHeight,
+				4, scaledOutputRgba8888, constants.outputScale*imgWidth*sizeof(uint32_t));
 			if (writeError == 0)
 			{
 				printf("Error writing output image '%s'\n", outImageFileName);
