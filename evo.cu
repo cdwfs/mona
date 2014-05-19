@@ -155,7 +155,7 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
 	__shared__ int h1,h2,h3,swap,bad;
-	__shared__ float3 triColor, triColorScaled;
+	__shared__ float3 triColor, triColorScaled, triColorScaled2;
 
 	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value, yes, this is retarded
@@ -196,6 +196,7 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 		h1 = clip(imgHeight * y1, 0.0f, imgHeight);
 		h2 = clip(imgHeight * y2, 0.0f, imgHeight);
 		h3 = clip(imgHeight * y3, 0.0f, imgHeight);
+
 		triColor = make_float3(tri->r, tri->g, tri->b);
 		triColor.x = clip(triColor.x, 0.0f, 1.0f);
 		triColor.y = clip(triColor.y, 0.0f, 1.0f);
@@ -206,6 +207,9 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 		triColorScaled.x = triColor.x * 0.30f;
 		triColorScaled.y = triColor.y * 0.59f;
 		triColorScaled.z = triColor.z * 0.11f;
+		triColorScaled2.x = triColor.x * 0.30f * 0.30f;
+		triColorScaled2.y = triColor.y * 0.59f * 0.59f;
+		triColorScaled2.z = triColor.z * 0.11f * 0.11f;
 	}
 	__syncthreads();
 	if(bad) {*sum = FLT_MAX; return;}
@@ -216,6 +220,20 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 		int xStart = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y1), 0.0f, imgWidth);
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y1), 0.0f, imgWidth);
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
+#if 0
+			// This version is fewer ALU ops, but more registers
+			const float4 currentPixel = tex2D(currimg, xx, yy);
+			const float4 refPixel = tex2D(refimg, xx, yy);
+			float pixelScoreR = fmaf(-2.0f, refPixel.x, triColor.x);
+			float pixelScoreG = fmaf(-2.0f, refPixel.y, triColor.y);
+			float pixelScoreB = fmaf(-2.0f, refPixel.z, triColor.z);
+			pixelScoreR       = fmaf(2.0f, currentPixel.x, pixelScoreR);
+			pixelScoreG       = fmaf(2.0f, currentPixel.y, pixelScoreG);
+			pixelScoreB       = fmaf(2.0f, currentPixel.z, pixelScoreB);
+			localsum          = fmaf(pixelScoreR, triColorScaled2.x, localsum);
+			localsum          = fmaf(pixelScoreG, triColorScaled2.y, localsum);
+			localsum          = fmaf(pixelScoreB, triColorScaled2.z, localsum);
+#else
 			float4 pixelDiff = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
 			pixelDiff.x *= 0.30f;
 			pixelDiff.y *= 0.59f;
@@ -223,6 +241,7 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 			localsum -= dot3(pixelDiff, pixelDiff);
 			pixelDiff.x += triColorScaled.x; pixelDiff.y += triColorScaled.y; pixelDiff.z += triColorScaled.z;
 			localsum += dot3(pixelDiff, pixelDiff);
+#endif
 		}
 	}
 	
@@ -241,6 +260,20 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 		int xStart = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
+#if 0
+			// This version is fewer ALU ops, but more registers
+			const float4 currentPixel = tex2D(currimg, xx, yy);
+			const float4 refPixel = tex2D(refimg, xx, yy);
+			float pixelScoreR = fmaf(-2.0f, refPixel.x, triColor.x);
+			float pixelScoreG = fmaf(-2.0f, refPixel.y, triColor.y);
+			float pixelScoreB = fmaf(-2.0f, refPixel.z, triColor.z);
+			pixelScoreR       = fmaf(2.0f, currentPixel.x, pixelScoreR);
+			pixelScoreG       = fmaf(2.0f, currentPixel.y, pixelScoreG);
+			pixelScoreB       = fmaf(2.0f, currentPixel.z, pixelScoreB);
+			localsum          = fmaf(pixelScoreR, triColorScaled2.x, localsum);
+			localsum          = fmaf(pixelScoreG, triColorScaled2.y, localsum);
+			localsum          = fmaf(pixelScoreB, triColorScaled2.z, localsum);
+#else
 			float4 pixelDiff = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
 			pixelDiff.x *= 0.30f;
 			pixelDiff.y *= 0.59f;
@@ -248,6 +281,7 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 			localsum -= dot3(pixelDiff, pixelDiff);
 			pixelDiff.x += triColorScaled.x; pixelDiff.y += triColorScaled.y; pixelDiff.z += triColorScaled.z;
 			localsum += dot3(pixelDiff, pixelDiff);
+#endif
 		}
 	}
 
