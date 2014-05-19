@@ -5,6 +5,8 @@
 #include "evogpupso.h"
 #include "utils.h"
 
+#include <float.h>
+
 typedef unsigned int uint;
 
 // poor man's random number generator
@@ -205,7 +207,7 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 		h3 = clip(imgHeight * y3, 0.0f, imgHeight);
 	}
 	__syncthreads();
-	if(bad) {*sum = 0.0f; return;}
+	if(bad) {*sum = FLT_MAX; return;}
 
 	// score first half of triangle. This substract the score prior to the last triangle
 	float localsum = 0.0f;
