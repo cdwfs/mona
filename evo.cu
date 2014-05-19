@@ -17,8 +17,6 @@ typedef unsigned int uint;
 #define min(a,b) (a > b ? b : a)
 #define clip(a,l,h) (max(min(a,h),l))
 
-//luminance =  0.3 R + 0.59 G + 0.11 B
-#define luminance(color) ( fmaf((color).x, 0.3f, fmaf((color).y, 0.59f, (color).z*0.11f)) )
 #define dot3(a,b) ( fmaf((a).x, (b).x, fmaf((a).y, (b).y, (a).z*(b).z)) )
 
 //swap float module for swapping values in evaluation
@@ -155,7 +153,7 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
 	__shared__ int h1,h2,h3,swap,bad;
-	__shared__ float3 triColor, triColorScaled, triColorScaled2;
+	__shared__ float3 triColor;
 
 	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value, yes, this is retarded
@@ -204,12 +202,6 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 		triColor.x = fmaf(kEvoAlphaLimit, triColor.x, -kEvoAlphaOffset);
 		triColor.y = fmaf(kEvoAlphaLimit, triColor.y, -kEvoAlphaOffset);
 		triColor.z = fmaf(kEvoAlphaLimit, triColor.z, -kEvoAlphaOffset);
-		triColorScaled.x = triColor.x * 0.30f;
-		triColorScaled.y = triColor.y * 0.59f;
-		triColorScaled.z = triColor.z * 0.11f;
-		triColorScaled2.x = triColor.x * 0.30f * 0.30f;
-		triColorScaled2.y = triColor.y * 0.59f * 0.59f;
-		triColorScaled2.z = triColor.z * 0.11f * 0.11f;
 	}
 	__syncthreads();
 	if(bad) {*sum = FLT_MAX; return;}
@@ -230,16 +222,13 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 			pixelScoreR       = fmaf(2.0f, currentPixel.x, pixelScoreR);
 			pixelScoreG       = fmaf(2.0f, currentPixel.y, pixelScoreG);
 			pixelScoreB       = fmaf(2.0f, currentPixel.z, pixelScoreB);
-			localsum          = fmaf(pixelScoreR, triColorScaled2.x, localsum);
-			localsum          = fmaf(pixelScoreG, triColorScaled2.y, localsum);
-			localsum          = fmaf(pixelScoreB, triColorScaled2.z, localsum);
+			localsum          = fmaf(pixelScoreR, triColor.x, localsum);
+			localsum          = fmaf(pixelScoreG, triColor.y, localsum);
+			localsum          = fmaf(pixelScoreB, triColor.z, localsum);
 #else
 			float4 pixelDiff = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
-			pixelDiff.x *= 0.30f;
-			pixelDiff.y *= 0.59f;
-			pixelDiff.z *= 0.11f;
 			localsum -= dot3(pixelDiff, pixelDiff);
-			pixelDiff.x += triColorScaled.x; pixelDiff.y += triColorScaled.y; pixelDiff.z += triColorScaled.z;
+			pixelDiff.x += triColor.x; pixelDiff.y += triColor.y; pixelDiff.z += triColor.z;
 			localsum += dot3(pixelDiff, pixelDiff);
 #endif
 		}
@@ -270,16 +259,13 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 			pixelScoreR       = fmaf(2.0f, currentPixel.x, pixelScoreR);
 			pixelScoreG       = fmaf(2.0f, currentPixel.y, pixelScoreG);
 			pixelScoreB       = fmaf(2.0f, currentPixel.z, pixelScoreB);
-			localsum          = fmaf(pixelScoreR, triColorScaled2.x, localsum);
-			localsum          = fmaf(pixelScoreG, triColorScaled2.y, localsum);
-			localsum          = fmaf(pixelScoreB, triColorScaled2.z, localsum);
+			localsum          = fmaf(pixelScoreR, triColor.x, localsum);
+			localsum          = fmaf(pixelScoreG, triColor.y, localsum);
+			localsum          = fmaf(pixelScoreB, triColor.z, localsum);
 #else
 			float4 pixelDiff = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
-			pixelDiff.x *= 0.30f;
-			pixelDiff.y *= 0.59f;
-			pixelDiff.z *= 0.11f;
 			localsum -= dot3(pixelDiff, pixelDiff);
-			pixelDiff.x += triColorScaled.x; pixelDiff.y += triColorScaled.y; pixelDiff.z += triColorScaled.z;
+			pixelDiff.x += triColor.x; pixelDiff.y += triColor.y; pixelDiff.z += triColor.z;
 			localsum += dot3(pixelDiff, pixelDiff);
 #endif
 		}
@@ -408,9 +394,6 @@ __global__ void render(float4 * im,
 		for(int xx = threadIdx.x; xx < imgWidth; xx += kEvoBlockDim) {
 			float4 o = tex2D(refimg, xx, yy);
 			o.x -= im[g].x; o.y -= im[g].y; o.z -= im[g].z;
-			o.x *= 0.30f;
-			o.y *= 0.59f;
-			o.z *= 0.11f;
 			localsum += dot3(o, o);
 			g += kEvoBlockDim;
 		}
