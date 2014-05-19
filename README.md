@@ -26,6 +26,13 @@ evolve on my laptop's 650M:
 
 Change Log
 ----------
+ - 5/19/2014: I started tracking the Peak Signal-to-Noise Ratio (PSNR) at each generation instead of the squared error sum,
+   since the former is theoretically comparable across multiple images while the latter is not. This should let me better
+   evaluate the effect of future codes changes on image quality. As for the error function itself, I tried applying a non-uniform
+   scale to the color channels when computing per-pixel error (so that green error is weighted more heavily than red error, and red
+   more than blue), but strangely it didn't seem to help. I also simplified the error calculation to use 30% fewer ALU ops, but
+   the register pressure was worse. The next step is probably some boring work, like adding command-line arguments to enable
+   better automated testing.
  - 5/16/2014: I found a memory stomp introduced in one of my previous changes; hooray for Nsight! Fixing it
    increased my register pressure and pushed me back to 50% occupancy, but noticeably improved long-term convergence quality.
    I also keep better track of the best solution found so far, which further improves visual quality. I fixed a number of
