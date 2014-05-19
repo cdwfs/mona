@@ -10,6 +10,7 @@
 #include "stb_image_write.h"
 
 #include <float.h>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -209,7 +210,7 @@ int main(int argc, char *argv[])
 	}
 	fprintf(datFile, "# Input: %s\n", argv[1]);
 	fprintf(datFile, "# Date: %s\n", "today");
-	fprintf(datFile, "# Iteration:\tTime\tScore:\n");
+	fprintf(datFile, "# Iteration:\tTime (sec)\tPSNR (dB):\n");
 	for(int32_t iIter=1; iIter<=kEvoIterationCount; ++iIter)
 	{
 		// Choose a new random triangle to update
@@ -237,9 +238,11 @@ int main(int argc, char *argv[])
 			memcpy(h_bestTriangles, h_currentTriangles, kEvoMaxTriangleCount*sizeof(triangle));
 		}
 		// Print output
+		const float mse = bestScore / (float)(3*imgWidth*imgHeight);
+		const float psnr = 10.0f * log10(1.0f * 1.0f / mse);
 		cpuTimer.Update();
-		printf("%7.2fs (gen %4d): score = %.4f [best = %.4f]\n", cpuTimer.GetElapsedSeconds(), iIter, currentScore, bestScore);
-		fprintf(datFile, "%6d\t\t%7.2f\t%12.4f\n", iIter, cpuTimer.GetElapsedSeconds(), bestScore);
+		printf("%7.2fs (gen %4d): bestScore = %.4f psnr = %.4f dB\n", cpuTimer.GetElapsedSeconds(), iIter, bestScore, psnr);
+		fprintf(datFile, "%6d\t\t%7.2f\t\t%12.4f\n", iIter, cpuTimer.GetElapsedSeconds(), psnr);
 
 		// texturize current solution
 		CUDA_CHECK( cudaBindTexture2D(&offset, currImg, d_currentPixels, &channelDesc, imgWidth, imgHeight, originalPixelsPitch) );
