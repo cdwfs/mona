@@ -19,13 +19,6 @@ typedef unsigned int uint;
 
 #define dot3(a,b) ( fmaf((a).x, (b).x, fmaf((a).y, (b).y, (a).z*(b).z)) )
 
-//swap float module for swapping values in evaluation
-inline __host__ __device__ void swap(float& a, float& b) {
-	float temp = a;
-	a = b;
-	b = temp;
-}
-
 //module for creating a float on our device
 inline __host__ __device__ float4 operator-(float4 a, float4 b)
 {
