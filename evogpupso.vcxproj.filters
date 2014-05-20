@@ -30,7 +30,6 @@
     <CudaCompile Include="evo.cu" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="evo.py" />
     <None Include="README.md" />
   </ItemGroup>
 </Project>
