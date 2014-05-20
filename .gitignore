@@ -1,5 +1,5 @@
 *.pyc
-temp_images
+test-*
 
 *.obj
 *.o
