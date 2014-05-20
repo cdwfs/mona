@@ -87,8 +87,9 @@ Here's what I use to build and run EvoGpuPso.
  - Visual Studio 2010
  - CUDA Toolkit 6.0
  - NVIDIA GPU (currently requires Compute Capability 3.0 or later)
- - Gnuplot 4.6.5 (for generating graphs)
- - Python 3.4 (for running test scripts)
+ - Gnuplot 4.6.5 (optional -- for generating graphs)
+ - Python 3.4 (optional -- for running test scripts)
+
 Other configurations may work, with some coaxing. This is just the only CUDA-capable
 system I have available to test with.
 
