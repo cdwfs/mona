@@ -79,7 +79,19 @@ In no particular order; just listed here so I don't forget:
  - Continue to investigate improvements to the image difference method. The current squared-scaled-distance approach is probably
    naive. Possible alternatives include [Root Mean Squared Deviation](http://en.wikipedia.org/wiki/RMSD) and
    [Mean Structual Similarity](http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=230F49B56EF7810EBD8B84BD3ACF7815?doi=10.1.1.5.54&rep=rep1&type=pdf).
-   
+
+Build Environment
+-----------------
+Here's what I use to build and run EvoGpuPso.
+ - Windows 7
+ - Visual Studio 2010
+ - CUDA Toolkit 6.0
+ - NVIDIA GPU (currently requires Compute Capability 3.0 or later)
+ - Gnuplot 4.6.5 (for generating graphs)
+ - Python 3.4 (for running test scripts)
+Other configurations may work, with some coaxing. This is just the only CUDA-capable
+system I have available to test with.
+
 Acknowledgements
 ----------------
 Much thanks to:
