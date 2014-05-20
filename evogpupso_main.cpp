@@ -9,11 +9,13 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+#include <direct.h>
 #include <float.h>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 
 // From evo.cu
@@ -64,6 +66,40 @@ static void randomizeTriangleVel(triangle *tri)
 	tri->a = randf() * 2.0f - 1.0f;
 }
 
+static void usage(void)
+{
+	printf("\
+Usage: evogpupso [OPTIONS] <input image>\n\
+OPTIONS:\n\
+-out FILE.png      Write final output image to FILE.png [default: %s]\n\
+-stats FILE        Write per-generation statistics to FILE [default: none]\n\
+-temp DIR          Write intermediate image results to DIR. Images will be\n\
+                   written every 100 generations. [default: none]\n\
+-scale N		   Scale factor for output image. Must be >= 1. [default: %d]\n\
+-gens N            Number of full PSO generations to run [default: %d]\n\
+-tris N            Number of triangles to render [default: %d]\n\
+-psoiter N         Number if PSO iterations within each generation.\n\
+                   Supports an early-out limit; see below. [default: %d]\n\
+-checklimit N      PSO will early out after this many generations after\n\
+		           results stop improving. [default: %d]\n\
+-particles N       Number of PSO \"particles\" to simulate for each\n\
+		           generation. [default: %d]\n\
+-spring N          PSO spring constant. Should be in the range [0.7...2.0].\n\
+		           Probably safe to leave as-is. [default: %.2f]\n\
+-damp N            PSO dampening factor. Should be in the range [0.7..1.0].\n\
+		           Lower values tend to converge better earlier; higher\n\
+		           values converge better later. [default: %.2f]\n\
+",
+		kEvoOutputFileDefault,
+		kEvoOutputScaleDefault,
+		kEvoIterationCountDefault,
+		kEvoMaxTriangleCountDefault,
+		kEvoPsoIterationCountDefault,
+		kEvoCheckLimitDefault,
+		kEvoPsoParticleCountDefault,
+		kEvoPsoSpringConstantDefault,
+		kEvoPsoDampeningFactorDefault);
+}
 
 int main(int argc, char *argv[])
 {
@@ -94,6 +130,11 @@ int main(int argc, char *argv[])
 	const int32_t kEvoPsoGridDim = 4 * deviceMpCount * deviceMaxPsoBlocksPerMp;
 	(void)kEvoPsoGridDim;
 
+	// Set up PSO constants (overridable from command line)
+	const char *inImageFileName   = nullptr;
+	const char *outImageFileName  = kEvoOutputFileDefault;
+	const char *outStatsFileName  = nullptr;
+	const char *outTempDirName    = nullptr;
 	PsoConstants constants = {};
 	constants.iterationCount      = kEvoIterationCountDefault;
 	constants.alphaLimit          = kEvoAlphaLimitDefault;
@@ -106,10 +147,94 @@ int main(int argc, char *argv[])
 	constants.psoNeighborhoodSize = kEvoPsoNeighborhoodSizeDefault;
 	constants.psoSpringConstant   = kEvoPsoSpringConstantDefault;
 	constants.psoDampeningFactor  = kEvoPsoDampeningFactorDefault;
-
-	if (argc != 2)
+	if (argc < 2)
 	{
-		printf("Usage: %s in.???\n", argv[0]);
+		usage();
+		return -1;
+	}
+	for(int iArg=1; iArg<argc; ++iArg)
+	{
+		if        (strncmp(argv[iArg], "-out", 5) == 0 && iArg+1 < argc) {
+			outImageFileName = argv[++iArg];
+			continue;
+		} else if (strncmp(argv[iArg], "-stats", 7) == 0 && iArg+1 < argc) {
+			outStatsFileName = argv[++iArg];
+			continue;
+		} else if (strncmp(argv[iArg], "-temp", 6) == 0 && iArg+1 < argc) {
+			outTempDirName = argv[++iArg];
+			continue;
+		} else if (strncmp(argv[iArg], "-scale", 7) == 0 && iArg+1 < argc) {
+			constants.outputScale = strtol(argv[++iArg], nullptr, 10);
+			continue;
+		} else if (strncmp(argv[iArg], "-gens", 6) == 0 && iArg+1 < argc) {
+			constants.iterationCount = strtol(argv[++iArg], nullptr, 10);
+			continue;
+		} else if (strncmp(argv[iArg], "-tris", 6) == 0 && iArg+1 < argc) {
+			constants.maxTriangleCount = strtol(argv[++iArg], nullptr, 10);
+			continue;
+		} else if (strncmp(argv[iArg], "-psoiter", 9) == 0 && iArg+1 < argc) {
+			constants.psoIterationCount = strtol(argv[++iArg], nullptr, 10);
+			continue;
+		} else if (strncmp(argv[iArg], "-checklimit", 12) == 0 && iArg+1 < argc) {
+			constants.checkLimit = strtol(argv[++iArg], nullptr, 10);
+			continue;
+		} else if (strncmp(argv[iArg], "-particles", 11) == 0 && iArg+1 < argc) {
+			constants.psoParticleCount = strtol(argv[++iArg], nullptr, 10);
+			continue;
+		} else if (strncmp(argv[iArg], "-spring", 8) == 0 && iArg+1 < argc) {
+			constants.psoSpringConstant = (float)strtod(argv[++iArg], nullptr);
+			continue;
+		} else if (strncmp(argv[iArg], "-damp", 6) == 0 && iArg+1 < argc) {
+			constants.psoDampeningFactor = (float)strtod(argv[++iArg], nullptr);
+			continue;
+		} else if (strncmp(argv[iArg], "--help", 7) == 0 && iArg+1 < argc) {
+			usage();
+			return 0;
+		} else if (iArg+1 == argc) {
+			// Final argument is the input file
+			inImageFileName = argv[iArg];
+			continue;
+		} else {
+			// Unrecognized argument
+			usage();
+			return -1;
+		}
+	}
+	// Validate arguments
+	if (constants.outputScale < 1) {
+		fprintf(stderr, "ERROR: output scale (%d) must be >= 1\n", constants.outputScale);
+		return -1;
+	}
+	if (constants.iterationCount < 1) {
+		fprintf(stderr, "ERROR: generation count (%d) must be >= 1\n", constants.iterationCount);
+		return -1;
+	}
+	if (constants.maxTriangleCount < 1) {
+		fprintf(stderr, "ERROR: triangle count (%d) must be >= 1\n", constants.maxTriangleCount);
+		return -1;
+	}
+	if (constants.psoIterationCount < 1) {
+		fprintf(stderr, "ERROR: PSO iteration count (%d) must be >= 1\n", constants.psoIterationCount);
+		return -1;
+	}
+	if (constants.checkLimit < 1) {
+		fprintf(stderr, "ERROR: PSO check limit (%d) must be >= 1\n", constants.checkLimit);
+		return -1;
+	}
+	if (constants.psoParticleCount < 1) {
+		fprintf(stderr, "ERROR: PSO particle count (%d) must be >= 1\n", constants.psoParticleCount);
+		return -1;
+	}
+	if (constants.psoSpringConstant < 0) {
+		fprintf(stderr, "ERROR: PSO spring constant (%.3f) must be >= 0\n", constants.psoSpringConstant);
+		return -1;
+	}
+	if (constants.psoDampeningFactor < 0 || constants.psoDampeningFactor > 1.0f) {
+		fprintf(stderr, "ERROR: PSO particle count (%.3f) must be in the range [0..1]\n", constants.psoDampeningFactor);
+		return -1;
+	}
+	if (nullptr == inImageFileName) {
+		fprintf(stderr, "ERROR: no input file specified!\n");
 		return -1;
 	}
 
@@ -120,12 +245,11 @@ int main(int argc, char *argv[])
 	const uint32_t *inputPixels = nullptr;
 	int imgWidth = -1, imgHeight = -1, imgNumComp = -1;
 	{
-		const char *inputImageFileName = argv[1];
-		printf("Loading '%s'...\n", inputImageFileName);
-		inputPixels = (const uint32_t*)stbi_load(inputImageFileName, &imgWidth, &imgHeight, &imgNumComp, 4);
-		if (inputPixels == nullptr)
+		printf("Loading '%s'...\n", inImageFileName);
+		inputPixels = (const uint32_t*)stbi_load(inImageFileName, &imgWidth, &imgHeight, &imgNumComp, 4);
+		if (nullptr == inputPixels)
 		{
-			printf("Error loading input image '%s': %s\n", inputImageFileName, stbi_failure_reason());
+			fprintf(stderr, "Error loading input image '%s': %s\n", inImageFileName, stbi_failure_reason());
 			return -1;
 		}
 	}
@@ -215,19 +339,33 @@ int main(int argc, char *argv[])
 	// Upload constants to GPU
 	setGpuConstants(&constants);
 
+	// Open stats file, if necessary
+	FILE *statsFile = nullptr;
+	if (nullptr != outStatsFileName)
+	{
+		fopen_s(&statsFile, outStatsFileName, "w");
+		if (nullptr == statsFile)
+		{
+			fprintf(stderr, "ERROR: Could not open '%s'\n", outStatsFileName);
+			return -1;
+		}
+		printf("Writing stats to '%s'...\n", outStatsFileName);
+		fprintf(statsFile, "# Input: %s\n", inImageFileName);
+		fprintf(statsFile, "# Date: %s\n", "today");
+		fprintf(statsFile, "# Command: TODO\n"); // TODO: write the full command line here
+		fprintf(statsFile, "# Iteration:\tTime (sec)\tPSNR (dB):\n");
+	}
+
+	// Create directory for temp images, if necessary
+	if (nullptr != outTempDirName)
+	{
+		// TODO: should be much more robust
+		// (e.g. abort if directory can't be created, create more than one directory level, etc.)
+		_mkdir(outTempDirName);
+	}
+
 	CpuTimer cpuTimer;
 	cpuTimer.Start();
-	const char *datFileName = "lisa.dat";
-	FILE *datFile = nullptr;
-	fopen_s(&datFile, datFileName, "w");
-	if (nullptr == datFile)
-	{
-		printf("Could not open '%s'\n", datFileName);
-		return -1;
-	}
-	fprintf(datFile, "# Input: %s\n", argv[1]);
-	fprintf(datFile, "# Date: %s\n", "today");
-	fprintf(datFile, "# Iteration:\tTime (sec)\tPSNR (dB):\n");
 	for(int32_t iIter=1; iIter<=constants.iterationCount; ++iIter)
 	{
 		// Choose a new random triangle to update
@@ -247,6 +385,7 @@ int main(int argc, char *argv[])
 			launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore, imgWidth, imgHeight, originalPixelsPitch/sizeof(float4));
 			CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 		}
+
 		// Update best score if needed
 		if (currentScore < bestScore && currentScore != 0)
 		{
@@ -254,12 +393,16 @@ int main(int argc, char *argv[])
 			// Update best known solution
 			memcpy(h_bestTriangles, h_currentTriangles, constants.maxTriangleCount*sizeof(triangle));
 		}
+
 		// Print output
 		const float mse = bestScore / (float)(3*imgWidth*imgHeight);
 		const float psnr = 10.0f * log10(1.0f * 1.0f / mse);
 		cpuTimer.Update();
-		printf("%7.2fs (gen %4d): bestScore = %.4f psnr = %.4f dB\n", cpuTimer.GetElapsedSeconds(), iIter, bestScore, psnr);
-		fprintf(datFile, "%6d\t\t%7.2f\t\t%12.4f\n", iIter, cpuTimer.GetElapsedSeconds(), psnr);
+		printf("%7.2fs (gen %4d)   bestScore: %.4f   PSNR: %.4f dB\n", cpuTimer.GetElapsedSeconds(), iIter, bestScore, psnr);
+		if (nullptr != statsFile)
+		{
+			fprintf(statsFile, "%6d\t\t%7.2f\t\t%12.4f\n", iIter, cpuTimer.GetElapsedSeconds(), psnr);
+		}
 
 		// texturize current solution
 		CUDA_CHECK( cudaBindTexture2D(&offset, currImg, d_currentPixels, &channelDesc, imgWidth, imgHeight, originalPixelsPitch) );
@@ -296,7 +439,7 @@ int main(int argc, char *argv[])
 		CUDA_CHECK( cudaMemcpy(h_currentTriangles, d_currentTriangles, constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToHost) );
 
 		// Visual output
-		if ((iIter % 100) == 0)
+		if (nullptr != outTempDirName && (iIter % 100) == 0)
 		{
 			CUDA_CHECK( cudaMemcpy(d_bestTriangles, d_currentTriangles, constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
 			launch_renderproof(d_scaledOutputPixels, d_bestTriangles, constants.outputScale*imgWidth, constants.outputScale*imgHeight, scaledPixelsPitch/sizeof(float4));
@@ -311,22 +454,48 @@ int main(int argc, char *argv[])
 					( uint32_t(clamp(h_scaledOutputPixels[iPixel].w * 255.0f, 0.0f, 255.0f)) << 24 );
 			}
 			// Write output image
-			char outImageFileName[128];
-			_snprintf_s(outImageFileName, 127, "./temp_images/%04d%s", iIter, argv[1]);
-			outImageFileName[127] = 0;
-			printf("Writing '%s'...\n", outImageFileName);
-			int32_t writeError = stbi_write_png(outImageFileName, constants.outputScale*imgWidth, constants.outputScale*imgHeight,
+			char tempImageFileName[128];
+			_snprintf_s(tempImageFileName, 127, "./%s/%05d.png", outTempDirName, iIter);
+			tempImageFileName[127] = 0;
+			printf("Writing '%s'...\n", tempImageFileName);
+			int32_t writeError = stbi_write_png(tempImageFileName, constants.outputScale*imgWidth, constants.outputScale*imgHeight,
 				4, scaledOutputRgba8888, constants.outputScale*imgWidth*sizeof(uint32_t));
 			if (writeError == 0)
 			{
-				printf("Error writing output image '%s'\n", outImageFileName);
+				fprintf(stderr, "Error writing temporary output image '%s'\n", tempImageFileName);
 				return -1;
 			}
 		}
-
 	}
 
-	fclose(datFile);
+	// Write final output image
+	{
+		CUDA_CHECK( cudaMemcpy(d_bestTriangles, d_currentTriangles, constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
+		launch_renderproof(d_scaledOutputPixels, d_bestTriangles, constants.outputScale*imgWidth, constants.outputScale*imgHeight, scaledPixelsPitch/sizeof(float4));
+		CUDA_CHECK( cudaMemcpy2D(h_scaledOutputPixels,  constants.outputScale*srcPitch, d_scaledOutputPixels, scaledPixelsPitch, constants.outputScale*srcPitch, constants.outputScale*imgHeight, cudaMemcpyDeviceToHost) );
+		// Convert to RGBA8888 for output
+		for(int32_t iPixel=0; iPixel<constants.outputScale*imgWidth*constants.outputScale*imgHeight; ++iPixel)
+		{
+			scaledOutputRgba8888[iPixel] =
+				( uint32_t(clamp(h_scaledOutputPixels[iPixel].x * 255.0f, 0.0f, 255.0f)) <<  0 ) |
+				( uint32_t(clamp(h_scaledOutputPixels[iPixel].y * 255.0f, 0.0f, 255.0f)) <<  8 ) |
+				( uint32_t(clamp(h_scaledOutputPixels[iPixel].z * 255.0f, 0.0f, 255.0f)) << 16 ) |
+				( uint32_t(clamp(h_scaledOutputPixels[iPixel].w * 255.0f, 0.0f, 255.0f)) << 24 );
+		}
+		// Write output image.
+		// TODO: select output format from [jpg, png, bmp]?
+		printf("Writing '%s'...\n", outImageFileName);
+		int32_t writeError = stbi_write_png(outImageFileName, constants.outputScale*imgWidth, constants.outputScale*imgHeight,
+			4, scaledOutputRgba8888, constants.outputScale*imgWidth*sizeof(uint32_t));
+		if (writeError == 0)
+		{
+			fprintf(stderr, "Error writing final output image '%s'\n", outImageFileName);
+			return -1;
+		}
+	}
+
+	// cleanup -- lots more to do here
+	fclose(statsFile);
 	free((void*)inputPixels);
 	cudaDeviceReset();
 }

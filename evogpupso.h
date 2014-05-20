@@ -15,6 +15,7 @@
 #define kEvoPsoSpringConstantDefault 0.7f // Spring constant for PSO iteration. Anything in the range [0.7..2.0] seems to work equally well.
 #define kEvoPsoDampeningFactorDefault 0.85f // Dampening factor for PSO iteration. Use 0.85f for faster short-term convergence; 0.999f for higher quality long-term convergence.
 
+#define kEvoOutputFileDefault "out.png"
 #define kEvoBlockDim 16   // grid width/height
 
 typedef struct PsoConstants
