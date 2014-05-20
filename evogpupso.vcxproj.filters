@@ -31,5 +31,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
+    <None Include="test.py" />
   </ItemGroup>
 </Project>
