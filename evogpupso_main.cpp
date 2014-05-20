@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 {
 	srand( (unsigned int)time(NULL) );
 	int deviceCount = 0;
-	CUDA_CHECK( cudaGetDeviceCount(&deviceCount) );
+	cudaGetDeviceCount(&deviceCount);
 	if (deviceCount != 1)
 	{
 		printf("ERROR: expected one CUDA device; found %d.\n", deviceCount);
