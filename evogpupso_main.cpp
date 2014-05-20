@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
 		} else if (strncmp(argv[iArg], "-damp", 6) == 0 && iArg+1 < argc) {
 			constants.psoDampeningFactor = (float)strtod(argv[++iArg], nullptr);
 			continue;
-		} else if (strncmp(argv[iArg], "--help", 7) == 0 && iArg+1 < argc) {
+		} else if (strncmp(argv[iArg], "--help", 7) == 0) {
 			usage();
 			return 0;
 		} else if (iArg+1 == argc) {
