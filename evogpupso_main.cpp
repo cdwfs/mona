@@ -75,7 +75,7 @@ OPTIONS:\n\
 -stats FILE        Write per-generation statistics to FILE [default: none]\n\
 -temp DIR          Write intermediate image results to DIR. Images will be\n\
                    written every 100 generations. [default: none]\n\
--scale N		   Scale factor for output image. Must be >= 1. [default: %d]\n\
+-scale N           Scale factor for output image. Must be >= 1. [default: %d]\n\
 -gens N            Number of full PSO generations to run [default: %d]\n\
 -tris N            Number of triangles to render [default: %d]\n\
 -psoiter N         Number if PSO iterations within each generation.\n\
