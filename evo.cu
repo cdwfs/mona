@@ -300,7 +300,7 @@ __global__ void run(triangle * curr,   //D (triangles)
 	for(int q = 0; q < dkEvoPsoIterationCount; q++) {
 
 		// integrate position
-		if(q > 0 && threadIdx.y==0 && threadIdx.x < 10) {
+		if(q > 0 && threadIdx.y==0 && threadIdx.x < kEvoNumFloatsPerTriangle) {
 			float vmax = .2f * rand() + 0.05f;
 			float vmin = -.2f * rand() - 0.05f;	
 			float * v = (((float *) &vel[blockIdx.x]) + threadIdx.x);

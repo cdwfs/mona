@@ -17,6 +17,7 @@
 
 #define kEvoOutputFileDefault "out.png"
 #define kEvoBlockDim 16   // grid width/height
+#define kEvoNumFloatsPerTriangle 10
 
 typedef struct PsoConstants
 {
@@ -46,3 +47,5 @@ struct triangle {
 	float b;
 	float a; // TODO: unused
 };
+
+static_assert(sizeof(triangle) / sizeof(float) == kEvoNumFloatsPerTriangle, "sizeof(triangle) does not match expected value!");
