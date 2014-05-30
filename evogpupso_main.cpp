@@ -495,7 +495,10 @@ int main(int argc, char *argv[])
 	}
 
 	// cleanup -- lots more to do here
-	fclose(statsFile);
+	if (nullptr != statsFile)
+	{
+		fclose(statsFile);
+	}
 	free((void*)inputPixels);
 	cudaDeviceReset();
 }
