@@ -138,7 +138,6 @@ int main(int argc, char *argv[])
 	PsoConstants constants = {};
 	constants.iterationCount      = kEvoIterationCountDefault;
 	constants.alphaLimit          = kEvoAlphaLimitDefault;
-	constants.alphaOffset         = kEvoAlphaOffsetDefault;
 	constants.checkLimit          = kEvoCheckLimitDefault;
 	constants.outputScale         = kEvoOutputScaleDefault;
 	constants.psoParticleCount    = kEvoPsoParticleCountDefault;

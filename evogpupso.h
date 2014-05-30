@@ -5,7 +5,6 @@
 
 #define kEvoIterationCountDefault 2000       // Iteration count of main loop
 #define kEvoAlphaLimitDefault .0625f // alpha limit for images. Should be max(1.0f/255.0f, 50.0f / (float)kEvoMaxTriangleCount)
-#define kEvoAlphaOffsetDefault (kEvoAlphaLimitDefault/2) //alpha offset
 #define kEvoCheckLimitDefault 150 //number of times we have a non-improving value before we terminate
 #define kEvoOutputScaleDefault 2 //the factor by which we would like to scale up the image in the final render
 #define kEvoPsoParticleCountDefault 16    // number of particles for PSO. 16 seems fine; larger is slower and doesn't seem to help quality much.
@@ -23,7 +22,6 @@ typedef struct PsoConstants
 {
 	int32_t iterationCount;
 	float   alphaLimit;
-	float   alphaOffset; // must be alphaLimit/2
 	int32_t checkLimit;
 	int32_t outputScale;
 	int32_t psoParticleCount;

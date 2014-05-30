@@ -29,7 +29,6 @@ texture<float4, cudaTextureType2D, cudaReadModeElementType> currimg;  // current
 texture<float4, cudaTextureType2D, cudaReadModeElementType> refimg; // original reference image
 
 __constant__ float dkEvoAlphaLimit;
-__constant__ float dkEvoAlphaOffset;
 __constant__ int dkEvoCheckLimit;
 __constant__ int dkEvoPsoParticleCount;
 __constant__ int dkEvoPsoIterationCount;
@@ -61,9 +60,9 @@ inline   __device__  void addtriangle(float4 * img, triangle * tri, bool add, fl
 	}
 	
 	//set to alpha values that we are using 
-	triColor.x = fmaf(dkEvoAlphaLimit, triColor.x, -dkEvoAlphaOffset);
-	triColor.y = fmaf(dkEvoAlphaLimit, triColor.y, -dkEvoAlphaOffset);
-	triColor.z = fmaf(dkEvoAlphaLimit, triColor.z, -dkEvoAlphaOffset);
+	triColor.x = dkEvoAlphaLimit * triColor.x;
+	triColor.y = dkEvoAlphaLimit * triColor.y;
+	triColor.z = dkEvoAlphaLimit * triColor.z;
 	
 	if(threadIdx.y+threadIdx.x == 0) {
 		// sort points by y value so that we can render triangles properly
@@ -202,9 +201,9 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 		triColor.x = clip(triColor.x, 0.0f, 1.0f);
 		triColor.y = clip(triColor.y, 0.0f, 1.0f);
 		triColor.z = clip(triColor.z, 0.0f, 1.0f);
-		triColor.x = fmaf(dkEvoAlphaLimit, triColor.x, -dkEvoAlphaOffset);
-		triColor.y = fmaf(dkEvoAlphaLimit, triColor.y, -dkEvoAlphaOffset);
-		triColor.z = fmaf(dkEvoAlphaLimit, triColor.z, -dkEvoAlphaOffset);
+		triColor.x = dkEvoAlphaLimit * triColor.x;
+		triColor.y = dkEvoAlphaLimit * triColor.y;
+		triColor.z = dkEvoAlphaLimit * triColor.z;
 	}
 	__syncthreads();
 	if(bad) {*sum = FLT_MAX; return;}
@@ -462,9 +461,9 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, float imgW
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y1), 0.0f, imgWidth);
 		int g = imgPitch * yy + xStart;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			im[g].x += fmaf(dkEvoAlphaLimit, T->r, -dkEvoAlphaOffset);
-			im[g].y += fmaf(dkEvoAlphaLimit, T->g, -dkEvoAlphaOffset);
-			im[g].z += fmaf(dkEvoAlphaLimit, T->b, -dkEvoAlphaOffset);
+			im[g].x += dkEvoAlphaLimit * T->r;
+			im[g].y += dkEvoAlphaLimit * T->g;
+			im[g].z += dkEvoAlphaLimit * T->b;
 			g += kEvoBlockDim;
 		}
 
@@ -483,9 +482,9 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, float imgW
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
 		int g = imgPitch * yy + xStart;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			im[g].x += fmaf(dkEvoAlphaLimit, T->r, -dkEvoAlphaOffset);
-			im[g].y += fmaf(dkEvoAlphaLimit, T->g, -dkEvoAlphaOffset);
-			im[g].z += fmaf(dkEvoAlphaLimit, T->b, -dkEvoAlphaOffset);
+			im[g].x += dkEvoAlphaLimit * T->r;
+			im[g].y += dkEvoAlphaLimit * T->g;
+			im[g].z += dkEvoAlphaLimit * T->b;
 			g += kEvoBlockDim;
 		}
 	}
@@ -531,10 +530,6 @@ void setGpuConstants(const PsoConstants *constants)
 	CUDA_CHECK( cudaGetSymbolSize(&destSize, dkEvoAlphaLimit) );
 	assert( destSize == sizeof(float) );
 	CUDA_CHECK( cudaMemcpyToSymbol(dkEvoAlphaLimit, &(constants->alphaLimit), destSize) );
-
-	CUDA_CHECK( cudaGetSymbolSize(&destSize, dkEvoAlphaOffset) );
-	assert( destSize == sizeof(float) );
-	CUDA_CHECK( cudaMemcpyToSymbol(dkEvoAlphaOffset, &(constants->alphaOffset), destSize) );
 
 	CUDA_CHECK( cudaGetSymbolSize(&destSize, dkEvoCheckLimit) );
 	assert( destSize == sizeof(int32_t) );
