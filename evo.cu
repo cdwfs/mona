@@ -47,11 +47,6 @@ inline   __device__  void addtriangle(float4 * img, triangle * tri, bool add, fl
 	//copies over image
 	float3 triColor = make_float3(tri->r, tri->g, tri->b);
 
-	//clip color values to valid range
-	triColor.x = clip(triColor.x, 0.0f, 1.0f);
-	triColor.y = clip(triColor.y, 0.0f, 1.0f);
-	triColor.z = clip(triColor.z, 0.0f, 1.0f);
-
 	// negate the color channels if we're subtracing this triangle
 	if(add == 0) {
 		triColor.x *= -1;
@@ -198,9 +193,6 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 		h3 = clip(imgHeight * y3, 0.0f, imgHeight);
 
 		triColor = make_float3(tri->r, tri->g, tri->b);
-		triColor.x = clip(triColor.x, 0.0f, 1.0f);
-		triColor.y = clip(triColor.y, 0.0f, 1.0f);
-		triColor.z = clip(triColor.z, 0.0f, 1.0f);
 		triColor.x = dkEvoAlphaLimit * triColor.x;
 		triColor.y = dkEvoAlphaLimit * triColor.y;
 		triColor.z = dkEvoAlphaLimit * triColor.z;
@@ -313,6 +305,10 @@ __global__ void run(triangle * curr,   //D (triangles)
 			*p += *v;
 			if(fit[blockIdx.x] > 0 && rand() < 0.01f)
 				*p = rand();
+			if (threadIdx.x >= 6)
+			{
+				*p = clip(*p, 0.0f, 1.0f);
+			}
 		}
 		__syncthreads();
 
