@@ -5,13 +5,13 @@ import subprocess
 import sys
 
 inputs = [
-#    "Hanspeter-Pfister_large.jpg",
-#    "lena.jpg",
+    "Hanspeter-Pfister_large.jpg",
+    "lena.jpg",
     "lisa.jpg",
-#    "Mondrian.jpg",
-#    "monet-parliament.jpg",
-#    "moonman.jpg",
-#    "picasso_three_musicians_moma.jpg",
+    "Mondrian.jpg",
+    "monet-parliament.jpg",
+    "moonman.jpg",
+    "picasso_three_musicians_moma.jpg",
     "slisa.jpg",
 ]
 
@@ -67,7 +67,7 @@ plot """)
                          "-stats", stats_file,
                          "-temp", temp_dir,
                          "-scale", "2",
-                         "-gens", "100",
+                         "-gens", "2000",
                          "-tris", "800",
                          "-psoiter", "1000",
                          "-checklimit", "150",
