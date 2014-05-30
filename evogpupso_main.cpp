@@ -49,7 +49,6 @@ static void randomizeTrianglePos(triangle *tri)
 	tri->r = randf();
 	tri->g = randf();
 	tri->b = randf();
-	tri->a = randf();
 }
 
 static void randomizeTriangleVel(triangle *tri)
@@ -63,7 +62,6 @@ static void randomizeTriangleVel(triangle *tri)
 	tri->r = randf() * 2.0f - 1.0f;
 	tri->g = randf() * 2.0f - 1.0f;
 	tri->b = randf() * 2.0f - 1.0f;
-	tri->a = randf() * 2.0f - 1.0f;
 }
 
 static void usage(void)
@@ -479,7 +477,7 @@ int main(int argc, char *argv[])
 				( uint32_t(clamp(h_scaledOutputPixels[iPixel].x * 255.0f, 0.0f, 255.0f)) <<  0 ) |
 				( uint32_t(clamp(h_scaledOutputPixels[iPixel].y * 255.0f, 0.0f, 255.0f)) <<  8 ) |
 				( uint32_t(clamp(h_scaledOutputPixels[iPixel].z * 255.0f, 0.0f, 255.0f)) << 16 ) |
-				( uint32_t(clamp(h_scaledOutputPixels[iPixel].w * 255.0f, 0.0f, 255.0f)) << 24 );
+				(                                                                   0xFF << 24 );
 		}
 		// Write output image.
 		// TODO: select output format from [jpg, png, bmp]?

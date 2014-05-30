@@ -52,7 +52,7 @@ inline   __device__  void addtriangle(float4 * img, triangle * tri, bool add, fl
 	triColor.y = clip(triColor.y, 0.0f, 1.0f);
 	triColor.z = clip(triColor.z, 0.0f, 1.0f);
 
-	//if we are subtracting the triangle, set values to -1
+	// negate the color channels if we're subtracing this triangle
 	if(add == 0) {
 		triColor.x *= -1;
 		triColor.y *= -1;
@@ -416,7 +416,6 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, float imgW
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
 	__shared__ int h1,h2,h3,swap,bad;
 	if(threadIdx.x+threadIdx.y==0) {
-		T->a = clip(T->a, 0.0f, 1.0f);
 		T->r = clip(T->r, 0.0f, 1.0f);
 		T->g = clip(T->g, 0.0f, 1.0f);
 		T->b = clip(T->b, 0.0f, 1.0f);
