@@ -309,9 +309,8 @@ __global__ void run(triangle * curr,   //D (triangles)
 			*v *= dkEvoPsoDampeningFactor;
 			*v += dkEvoPsoSpringConstant * rand() * (*n - *p);
 			*v += dkEvoPsoSpringConstant * rand() * (*l - *p);
-			*v = max(*v, vmin);
-			*v = min(*v, vmax);
-			*p = *p + *v;
+			*v = min( max(*v, vmin), vmax );
+			*p += *v;
 			if(fit[blockIdx.x] > 0 && rand() < 0.01f)
 				*p = rand();
 		}
