@@ -248,19 +248,19 @@ static bool DDSPFtoGLFormat( const DdsPixelFormat& pf, uint32_t *outBlockSize, G
 			*outBlockSize = 4;
 			if( ISBITMASK(0x00ff0000,0x0000ff00,0x000000ff,0xff000000) )
 			{
-				*outGlFormat = GL_BGRA;	*outGlType = GL_UNSIGNED_BYTE; *outGlInternalFormat = GL_RGBA; return true;
+				*outGlFormat = GL_BGRA;	*outGlType = GL_UNSIGNED_BYTE; *outGlInternalFormat = GL_RGBA8; return true;
 			}
 			if( ISBITMASK(0x00ff0000,0x0000ff00,0x000000ff,0x00000000) )
 			{
-				*outGlFormat = GL_BGRA;	*outGlType = GL_UNSIGNED_BYTE; *outGlInternalFormat = GL_RGBA; return true; // BGRX
+				*outGlFormat = GL_BGRA;	*outGlType = GL_UNSIGNED_BYTE; *outGlInternalFormat = GL_RGBA8; return true; // BGRX
 			}
 			if( ISBITMASK(0x000000ff,0x0000ff00,0x00ff0000,0xff000000) )
 			{
-				*outGlFormat = GL_RGBA;	*outGlType = GL_UNSIGNED_BYTE; *outGlInternalFormat = GL_RGBA; return true;
+				*outGlFormat = GL_RGBA;	*outGlType = GL_UNSIGNED_BYTE; *outGlInternalFormat = GL_RGBA8; return true;
 			}
 			if( ISBITMASK(0x000000ff,0x0000ff00,0x00ff0000,0x00000000) )
 			{
-				*outGlFormat = GL_RGBA;	*outGlType = GL_UNSIGNED_BYTE; *outGlInternalFormat = GL_RGBA; return true; // RGBX
+				*outGlFormat = GL_RGBA;	*outGlType = GL_UNSIGNED_BYTE; *outGlInternalFormat = GL_RGBA8; return true; // RGBX
 			}
 
 			// Note that many common DDS reader/writers swap the
@@ -277,7 +277,7 @@ static bool DDSPFtoGLFormat( const DdsPixelFormat& pf, uint32_t *outBlockSize, G
 
 			if( ISBITMASK(0xffffffff,0x00000000,0x00000000,0x00000000) )
 			{
-				*outGlFormat = GL_RED;	*outGlType = GL_UNSIGNED_INT; *outGlInternalFormat = GL_RED; return true;
+				*outGlFormat = GL_RED;	*outGlType = GL_UNSIGNED_INT; *outGlInternalFormat = GL_R32UI; return true;
 			}
 			if( ISBITMASK(0x0000ffff,0xffff0000,0x00000000,0x00000000) )
 			{
@@ -317,7 +317,7 @@ static bool DDSPFtoGLFormat( const DdsPixelFormat& pf, uint32_t *outBlockSize, G
 			*outBlockSize = 1;
  			if( ISBITMASK(0x000000ff,0x00000000,0x00000000,0x00000000) )
 			{
-				*outGlFormat = GL_RED;	*outGlType = GL_UNSIGNED_BYTE; *outGlInternalFormat = GL_RED; return true;
+				*outGlFormat = GL_RED;	*outGlType = GL_UNSIGNED_BYTE; *outGlInternalFormat = GL_R8; return true;
 			}
 			break;
 		}
@@ -328,7 +328,7 @@ static bool DDSPFtoGLFormat( const DdsPixelFormat& pf, uint32_t *outBlockSize, G
 		{
 			if( ISBITMASK(0x000000ff,0x00000000,0x00000000,0x00000000) ) // L8
 			{
-				*outGlFormat = GL_RED;	*outGlType = GL_UNSIGNED_BYTE; *outGlInternalFormat = GL_RED; *outBlockSize = 1; return true;
+				*outGlFormat = GL_RED;	*outGlType = GL_UNSIGNED_BYTE; *outGlInternalFormat = GL_R8; *outBlockSize = 1; return true;
 			}
 		}
 
@@ -336,7 +336,7 @@ static bool DDSPFtoGLFormat( const DdsPixelFormat& pf, uint32_t *outBlockSize, G
 		{
 			if( ISBITMASK(0x0000ffff,0x00000000,0x00000000,0x00000000) ) // L16
 			{
-				*outGlFormat = GL_RED;	*outGlType = GL_UNSIGNED_SHORT; *outGlInternalFormat = GL_RED; *outBlockSize = 2; return true;
+				*outGlFormat = GL_RED;	*outGlType = GL_UNSIGNED_SHORT; *outGlInternalFormat = GL_R16; *outBlockSize = 2; return true;
 			}
 		}
 	}
