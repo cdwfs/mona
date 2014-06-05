@@ -117,6 +117,9 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="myglwidget.cpp" />
     <ClCompile Include="xmona.cpp" />
+    <ClCompile Include="zombolite_dds.cpp" />
+    <ClCompile Include="zombolite_opengl.cpp" />
+    <ClCompile Include="zombolite_string.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="xmona.h">
@@ -146,6 +149,7 @@
   <ItemGroup>
     <ClInclude Include="GeneratedFiles\ui_xmona.h" />
     <ClInclude Include="gl_core_3_3.h" />
+    <ClInclude Include="zombolite.h" />
     <CustomBuild Include="myglwidget.h">
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(QTDIR)\bin\moc.exe;%(FullPath)</AdditionalInputs>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Moc%27ing myglwidget.h...</Message>

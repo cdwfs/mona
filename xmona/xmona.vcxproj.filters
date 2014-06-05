@@ -62,6 +62,15 @@
     <ClCompile Include="gl_core_3_3.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="zombolite_dds.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="zombolite_opengl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="zombolite_string.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="xmona.h">
@@ -82,6 +91,9 @@
       <Filter>Generated Files</Filter>
     </ClInclude>
     <ClInclude Include="gl_core_3_3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zombolite.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
