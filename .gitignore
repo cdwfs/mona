@@ -25,3 +25,5 @@ test-*
 *.cache
 *.cu.deps
 *.png
+
+xmona/GeneratedFiles
