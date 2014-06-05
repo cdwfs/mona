@@ -26,9 +26,6 @@
     <property name="text">
      <string/>
     </property>
-    <property name="pixmap">
-     <pixmap>../lisa.jpg</pixmap>
-    </property>
     <property name="scaledContents">
      <bool>true</bool>
     </property>
@@ -51,7 +48,7 @@
      <x>0</x>
      <y>0</y>
      <width>600</width>
-     <height>23</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuXMona">
