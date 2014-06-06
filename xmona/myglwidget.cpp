@@ -42,12 +42,12 @@ void main(void)\n\
 
 static const char *fullscreenTriFsCode = "\
 #version 330\n\
-uniform sampler2D colorTex;\n\
+uniform sampler2DRect colorTex;\n\
 in vec2 outVS_TexCoord0;\n\
 out vec4 outFS_FragColor0;\n\
 void main()\n\
 {\n\
-	outFS_FragColor0 = texture(colorTex, outVS_TexCoord0);\n\
+	outFS_FragColor0 = texture(colorTex, outVS_TexCoord0 * textureSize(colorTex));\n\
 }\n";
 
 
@@ -80,17 +80,17 @@ void MyGLWidget::initializeGL(void)
 	glClearColor(1,0,0,1);
 
 	m_evoTex = 0;
-#if 0
-	ZomboLite::GenTexture(&evoTex, "Evolved Texture");
+#if 1
+	ZomboLite::GenTexture(&m_evoTex, "Evolved Texture");
 	glBindTexture(GL_TEXTURE_RECTANGLE, m_evoTex);
 	if (ogl_ext_ARB_texture_storage)
 	{
-		glTexStorage2D(GL_TEXTURE_RECTANGLE, 1, GL_RGBA8, this->width(), this->height());
-		glTexSubImage2D(GL_TEXTURE_RECTANGLE, 0, 0,0, this->width(), this->height(), GL_RGBA, GL_UNSIGNED_BYTE, canvas.pixels);
+		glTexStorage2D(GL_TEXTURE_RECTANGLE, 1, GL_RGBA32F, this->width(), this->height());
+		//glTexSubImage2D(GL_TEXTURE_RECTANGLE, 0, 0,0, this->width(), this->height(), GL_RGBA, GL_FLOAT, NULL);
 	}
 	else
 	{
-		glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA8, this->width(), this->height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, canvas.pixels);
+		glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA32F, this->width(), this->height(), 0, GL_RGBA, GL_FLOAT, NULL);
 	}
 	glBindTexture(GL_TEXTURE_RECTANGLE, 0);
 #else
@@ -111,6 +111,36 @@ void MyGLWidget::initializeGL(void)
 	ZomboLite::GenVertexArray(&m_evoVAO, "Evolved VAO");
 
 	glViewport( 0, 0, this->width(), this->height() );
+
+	// CUDA setup
+	unsigned int glDeviceCount = 0;
+	int cudaDeviceId = -1, glDeviceId = -1;
+	CUDA_CHECK( cudaGetDevice(&cudaDeviceId) );
+	CUDA_CHECK( cudaGLGetDevices(&glDeviceCount, &glDeviceId, 1, cudaGLDeviceListCurrentFrame) );
+	ZOMBOLITE_ASSERT(cudaDeviceId == glDeviceId, "No OpenGL/CUDA devices found");
+	cudaGraphicsResource *evoTexResource = NULL;
+	CUDA_CHECK( cudaGraphicsGLRegisterImage(&evoTexResource, m_evoTex, GL_TEXTURE_RECTANGLE, cudaGraphicsRegisterFlagsWriteDiscard) );
+
+	CUDA_CHECK( cudaGraphicsMapResources(1, &evoTexResource) );
+	cudaArray *evoTexArray = NULL;
+	size_t evoTexPixelsSize = this->width() * this->height() * sizeof(float)*4;
+	CUDA_CHECK( cudaGraphicsSubResourceGetMappedArray(&evoTexArray, evoTexResource, 0, 0) );
+	// Use d_evoTexPixels here
+	float *pixels = (float*)malloc(evoTexPixelsSize);
+	for(int iY=0; iY<this->height(); ++iY)
+	{
+		for(int iX=0; iX<this->width(); ++iX)
+		{
+			pixels[4*(iY*this->width() + iX) + 0] = 0.005f * iX;
+			pixels[4*(iY*this->width() + iX) + 1] = 0.005f * iY;
+			pixels[4*(iY*this->width() + iX) + 2] = 0;
+			pixels[4*(iY*this->width() + iX) + 3] = 1.0f;
+		}
+	}
+	CUDA_CHECK( cudaMemcpyToArray(evoTexArray, 0, 0, pixels, evoTexPixelsSize, cudaMemcpyHostToDevice) );
+	free(pixels);
+	// Stop using d_evoTexPixels here
+	CUDA_CHECK( cudaGraphicsUnmapResources(1, &evoTexResource) );
 }
 
 void MyGLWidget::resizeGL(void)
@@ -131,14 +161,14 @@ void MyGLWidget::paintGL(void)
 
 	// Blit the canvas's pixels to the full-screen texture
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, m_evoTex);
+	glBindTexture(GL_TEXTURE_RECTANGLE, m_evoTex);
 	glBindSampler(0, m_evoTexSampler);
 	glUseProgram(m_fullscreenPgm);
 	glBindVertexArray(m_evoVAO);
 	GLint fsTexLoc = glGetUniformLocation(m_fullscreenPgm, "colorTex");
 	glUniform1i(fsTexLoc, 0);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_RECTANGLE, 0);
 	glBindSampler(0, 0);
 	glBindVertexArray(0);
 	glEnable(GL_DEPTH_TEST);
