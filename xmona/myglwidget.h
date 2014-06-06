@@ -8,6 +8,7 @@ class MyGLWidget : public QGLWidget
 
 public:
 	MyGLWidget(QGLContext *context, QWidget *parent);
+	virtual ~MyGLWidget();
 
 protected:
 	void initializeGL(void);

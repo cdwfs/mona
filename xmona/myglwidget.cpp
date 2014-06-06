@@ -54,6 +54,9 @@ void main()\n\
 MyGLWidget::MyGLWidget(QGLContext *context, QWidget *parent) : QGLWidget(context, parent)
 {
 }
+MyGLWidget::~MyGLWidget()
+{
+}
 
 void MyGLWidget::initializeGL(void)
 {
