@@ -153,10 +153,26 @@ typedef unsigned int GLhandleARB;
 extern "C" {
 #endif /*__cplusplus*/
 
+extern int ogl_ext_ARB_gpu_shader_fp64;
 extern int ogl_ext_ARB_texture_compression_bptc;
 extern int ogl_ext_ARB_texture_storage;
 extern int ogl_ext_EXT_texture_compression_s3tc;
 extern int ogl_ext_KHR_debug;
+extern int ogl_ext_ARB_debug_output;
+
+#define GL_DOUBLE 0x140A
+#define GL_DOUBLE_MAT2 0x8F46
+#define GL_DOUBLE_MAT2x3 0x8F49
+#define GL_DOUBLE_MAT2x4 0x8F4A
+#define GL_DOUBLE_MAT3 0x8F47
+#define GL_DOUBLE_MAT3x2 0x8F4B
+#define GL_DOUBLE_MAT3x4 0x8F4C
+#define GL_DOUBLE_MAT4 0x8F48
+#define GL_DOUBLE_MAT4x2 0x8F4D
+#define GL_DOUBLE_MAT4x3 0x8F4E
+#define GL_DOUBLE_VEC2 0x8FFC
+#define GL_DOUBLE_VEC3 0x8FFD
+#define GL_DOUBLE_VEC4 0x8FFE
 
 #define GL_COMPRESSED_RGBA_BPTC_UNORM_ARB 0x8E8C
 #define GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT_ARB 0x8E8E
@@ -212,6 +228,29 @@ extern int ogl_ext_KHR_debug;
 #define GL_STACK_UNDERFLOW 0x0504
 #define GL_VERTEX_ARRAY 0x8074
 
+#define GL_DEBUG_CALLBACK_FUNCTION_ARB 0x8244
+#define GL_DEBUG_CALLBACK_USER_PARAM_ARB 0x8245
+#define GL_DEBUG_LOGGED_MESSAGES_ARB 0x9145
+#define GL_DEBUG_NEXT_LOGGED_MESSAGE_LENGTH_ARB 0x8243
+#define GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB 0x8242
+#define GL_DEBUG_SEVERITY_HIGH_ARB 0x9146
+#define GL_DEBUG_SEVERITY_LOW_ARB 0x9148
+#define GL_DEBUG_SEVERITY_MEDIUM_ARB 0x9147
+#define GL_DEBUG_SOURCE_API_ARB 0x8246
+#define GL_DEBUG_SOURCE_APPLICATION_ARB 0x824A
+#define GL_DEBUG_SOURCE_OTHER_ARB 0x824B
+#define GL_DEBUG_SOURCE_SHADER_COMPILER_ARB 0x8248
+#define GL_DEBUG_SOURCE_THIRD_PARTY_ARB 0x8249
+#define GL_DEBUG_SOURCE_WINDOW_SYSTEM_ARB 0x8247
+#define GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR_ARB 0x824D
+#define GL_DEBUG_TYPE_ERROR_ARB 0x824C
+#define GL_DEBUG_TYPE_OTHER_ARB 0x8251
+#define GL_DEBUG_TYPE_PERFORMANCE_ARB 0x8250
+#define GL_DEBUG_TYPE_PORTABILITY_ARB 0x824F
+#define GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR_ARB 0x824E
+#define GL_MAX_DEBUG_LOGGED_MESSAGES_ARB 0x9144
+#define GL_MAX_DEBUG_MESSAGE_LENGTH_ARB 0x9143
+
 #define GL_ALPHA 0x1906
 #define GL_ALWAYS 0x0207
 #define GL_AND 0x1501
@@ -248,7 +287,7 @@ extern int ogl_ext_KHR_debug;
 #define GL_DEPTH_WRITEMASK 0x0B72
 #define GL_DITHER 0x0BD0
 #define GL_DONT_CARE 0x1100
-#define GL_DOUBLE 0x140A
+/*Copied GL_DOUBLE From: ARB_gpu_shader_fp64*/
 #define GL_DOUBLEBUFFER 0x0C32
 #define GL_DRAW_BUFFER 0x0C01
 #define GL_DST_ALPHA 0x0304
@@ -1023,6 +1062,46 @@ extern int ogl_ext_KHR_debug;
 #define GL_TIME_ELAPSED 0x88BF
 #define GL_VERTEX_ATTRIB_ARRAY_DIVISOR 0x88FE
 
+#ifndef GL_ARB_gpu_shader_fp64
+#define GL_ARB_gpu_shader_fp64 1
+extern void (CODEGEN_FUNCPTR *_ptrc_glGetUniformdv)(GLuint, GLint, GLdouble *);
+#define glGetUniformdv _ptrc_glGetUniformdv
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniform1d)(GLint, GLdouble);
+#define glUniform1d _ptrc_glUniform1d
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniform1dv)(GLint, GLsizei, const GLdouble *);
+#define glUniform1dv _ptrc_glUniform1dv
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniform2d)(GLint, GLdouble, GLdouble);
+#define glUniform2d _ptrc_glUniform2d
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniform2dv)(GLint, GLsizei, const GLdouble *);
+#define glUniform2dv _ptrc_glUniform2dv
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniform3d)(GLint, GLdouble, GLdouble, GLdouble);
+#define glUniform3d _ptrc_glUniform3d
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniform3dv)(GLint, GLsizei, const GLdouble *);
+#define glUniform3dv _ptrc_glUniform3dv
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniform4d)(GLint, GLdouble, GLdouble, GLdouble, GLdouble);
+#define glUniform4d _ptrc_glUniform4d
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniform4dv)(GLint, GLsizei, const GLdouble *);
+#define glUniform4dv _ptrc_glUniform4dv
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix2dv)(GLint, GLsizei, GLboolean, const GLdouble *);
+#define glUniformMatrix2dv _ptrc_glUniformMatrix2dv
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix2x3dv)(GLint, GLsizei, GLboolean, const GLdouble *);
+#define glUniformMatrix2x3dv _ptrc_glUniformMatrix2x3dv
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix2x4dv)(GLint, GLsizei, GLboolean, const GLdouble *);
+#define glUniformMatrix2x4dv _ptrc_glUniformMatrix2x4dv
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix3dv)(GLint, GLsizei, GLboolean, const GLdouble *);
+#define glUniformMatrix3dv _ptrc_glUniformMatrix3dv
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix3x2dv)(GLint, GLsizei, GLboolean, const GLdouble *);
+#define glUniformMatrix3x2dv _ptrc_glUniformMatrix3x2dv
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix3x4dv)(GLint, GLsizei, GLboolean, const GLdouble *);
+#define glUniformMatrix3x4dv _ptrc_glUniformMatrix3x4dv
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix4dv)(GLint, GLsizei, GLboolean, const GLdouble *);
+#define glUniformMatrix4dv _ptrc_glUniformMatrix4dv
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix4x2dv)(GLint, GLsizei, GLboolean, const GLdouble *);
+#define glUniformMatrix4x2dv _ptrc_glUniformMatrix4x2dv
+extern void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix4x3dv)(GLint, GLsizei, GLboolean, const GLdouble *);
+#define glUniformMatrix4x3dv _ptrc_glUniformMatrix4x3dv
+#endif /*GL_ARB_gpu_shader_fp64*/ 
+
 
 #ifndef GL_ARB_texture_storage
 #define GL_ARB_texture_storage 1
@@ -1060,6 +1139,18 @@ extern void (CODEGEN_FUNCPTR *_ptrc_glPopDebugGroup)();
 extern void (CODEGEN_FUNCPTR *_ptrc_glPushDebugGroup)(GLenum, GLuint, GLsizei, const GLchar *);
 #define glPushDebugGroup _ptrc_glPushDebugGroup
 #endif /*GL_KHR_debug*/ 
+
+#ifndef GL_ARB_debug_output
+#define GL_ARB_debug_output 1
+extern void (CODEGEN_FUNCPTR *_ptrc_glDebugMessageCallbackARB)(GLDEBUGPROCARB, const void *);
+#define glDebugMessageCallbackARB _ptrc_glDebugMessageCallbackARB
+extern void (CODEGEN_FUNCPTR *_ptrc_glDebugMessageControlARB)(GLenum, GLenum, GLenum, GLsizei, const GLuint *, GLboolean);
+#define glDebugMessageControlARB _ptrc_glDebugMessageControlARB
+extern void (CODEGEN_FUNCPTR *_ptrc_glDebugMessageInsertARB)(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar *);
+#define glDebugMessageInsertARB _ptrc_glDebugMessageInsertARB
+extern GLuint (CODEGEN_FUNCPTR *_ptrc_glGetDebugMessageLogARB)(GLuint, GLsizei, GLenum *, GLenum *, GLuint *, GLenum *, GLsizei *, GLchar *);
+#define glGetDebugMessageLogARB _ptrc_glGetDebugMessageLogARB
+#endif /*GL_ARB_debug_output*/ 
 
 extern void (CODEGEN_FUNCPTR *_ptrc_glBlendFunc)(GLenum, GLenum);
 #define glBlendFunc _ptrc_glBlendFunc

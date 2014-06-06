@@ -1,5 +1,4 @@
 #include "zombolite.h"
-#define GL_ARB_debug_output // prevents multiple definitions in Qt, which still uses this define instead of KHR_debug
 #include "myglwidget.h"
 
 #include <cassert>

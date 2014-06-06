@@ -95,10 +95,73 @@ static PROC WinGetProcAddress(const char *name)
 	#endif
 #endif
 
+int ogl_ext_ARB_gpu_shader_fp64 = ogl_LOAD_FAILED;
 int ogl_ext_ARB_texture_compression_bptc = ogl_LOAD_FAILED;
 int ogl_ext_ARB_texture_storage = ogl_LOAD_FAILED;
 int ogl_ext_EXT_texture_compression_s3tc = ogl_LOAD_FAILED;
 int ogl_ext_KHR_debug = ogl_LOAD_FAILED;
+int ogl_ext_ARB_debug_output = ogl_LOAD_FAILED;
+
+void (CODEGEN_FUNCPTR *_ptrc_glGetUniformdv)(GLuint, GLint, GLdouble *) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniform1d)(GLint, GLdouble) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniform1dv)(GLint, GLsizei, const GLdouble *) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniform2d)(GLint, GLdouble, GLdouble) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniform2dv)(GLint, GLsizei, const GLdouble *) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniform3d)(GLint, GLdouble, GLdouble, GLdouble) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniform3dv)(GLint, GLsizei, const GLdouble *) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniform4d)(GLint, GLdouble, GLdouble, GLdouble, GLdouble) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniform4dv)(GLint, GLsizei, const GLdouble *) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix2dv)(GLint, GLsizei, GLboolean, const GLdouble *) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix2x3dv)(GLint, GLsizei, GLboolean, const GLdouble *) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix2x4dv)(GLint, GLsizei, GLboolean, const GLdouble *) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix3dv)(GLint, GLsizei, GLboolean, const GLdouble *) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix3x2dv)(GLint, GLsizei, GLboolean, const GLdouble *) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix3x4dv)(GLint, GLsizei, GLboolean, const GLdouble *) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix4dv)(GLint, GLsizei, GLboolean, const GLdouble *) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix4x2dv)(GLint, GLsizei, GLboolean, const GLdouble *) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glUniformMatrix4x3dv)(GLint, GLsizei, GLboolean, const GLdouble *) = NULL;
+
+static int Load_ARB_gpu_shader_fp64()
+{
+	int numFailed = 0;
+	_ptrc_glGetUniformdv = (void (CODEGEN_FUNCPTR *)(GLuint, GLint, GLdouble *))IntGetProcAddress("glGetUniformdv");
+	if(!_ptrc_glGetUniformdv) numFailed++;
+	_ptrc_glUniform1d = (void (CODEGEN_FUNCPTR *)(GLint, GLdouble))IntGetProcAddress("glUniform1d");
+	if(!_ptrc_glUniform1d) numFailed++;
+	_ptrc_glUniform1dv = (void (CODEGEN_FUNCPTR *)(GLint, GLsizei, const GLdouble *))IntGetProcAddress("glUniform1dv");
+	if(!_ptrc_glUniform1dv) numFailed++;
+	_ptrc_glUniform2d = (void (CODEGEN_FUNCPTR *)(GLint, GLdouble, GLdouble))IntGetProcAddress("glUniform2d");
+	if(!_ptrc_glUniform2d) numFailed++;
+	_ptrc_glUniform2dv = (void (CODEGEN_FUNCPTR *)(GLint, GLsizei, const GLdouble *))IntGetProcAddress("glUniform2dv");
+	if(!_ptrc_glUniform2dv) numFailed++;
+	_ptrc_glUniform3d = (void (CODEGEN_FUNCPTR *)(GLint, GLdouble, GLdouble, GLdouble))IntGetProcAddress("glUniform3d");
+	if(!_ptrc_glUniform3d) numFailed++;
+	_ptrc_glUniform3dv = (void (CODEGEN_FUNCPTR *)(GLint, GLsizei, const GLdouble *))IntGetProcAddress("glUniform3dv");
+	if(!_ptrc_glUniform3dv) numFailed++;
+	_ptrc_glUniform4d = (void (CODEGEN_FUNCPTR *)(GLint, GLdouble, GLdouble, GLdouble, GLdouble))IntGetProcAddress("glUniform4d");
+	if(!_ptrc_glUniform4d) numFailed++;
+	_ptrc_glUniform4dv = (void (CODEGEN_FUNCPTR *)(GLint, GLsizei, const GLdouble *))IntGetProcAddress("glUniform4dv");
+	if(!_ptrc_glUniform4dv) numFailed++;
+	_ptrc_glUniformMatrix2dv = (void (CODEGEN_FUNCPTR *)(GLint, GLsizei, GLboolean, const GLdouble *))IntGetProcAddress("glUniformMatrix2dv");
+	if(!_ptrc_glUniformMatrix2dv) numFailed++;
+	_ptrc_glUniformMatrix2x3dv = (void (CODEGEN_FUNCPTR *)(GLint, GLsizei, GLboolean, const GLdouble *))IntGetProcAddress("glUniformMatrix2x3dv");
+	if(!_ptrc_glUniformMatrix2x3dv) numFailed++;
+	_ptrc_glUniformMatrix2x4dv = (void (CODEGEN_FUNCPTR *)(GLint, GLsizei, GLboolean, const GLdouble *))IntGetProcAddress("glUniformMatrix2x4dv");
+	if(!_ptrc_glUniformMatrix2x4dv) numFailed++;
+	_ptrc_glUniformMatrix3dv = (void (CODEGEN_FUNCPTR *)(GLint, GLsizei, GLboolean, const GLdouble *))IntGetProcAddress("glUniformMatrix3dv");
+	if(!_ptrc_glUniformMatrix3dv) numFailed++;
+	_ptrc_glUniformMatrix3x2dv = (void (CODEGEN_FUNCPTR *)(GLint, GLsizei, GLboolean, const GLdouble *))IntGetProcAddress("glUniformMatrix3x2dv");
+	if(!_ptrc_glUniformMatrix3x2dv) numFailed++;
+	_ptrc_glUniformMatrix3x4dv = (void (CODEGEN_FUNCPTR *)(GLint, GLsizei, GLboolean, const GLdouble *))IntGetProcAddress("glUniformMatrix3x4dv");
+	if(!_ptrc_glUniformMatrix3x4dv) numFailed++;
+	_ptrc_glUniformMatrix4dv = (void (CODEGEN_FUNCPTR *)(GLint, GLsizei, GLboolean, const GLdouble *))IntGetProcAddress("glUniformMatrix4dv");
+	if(!_ptrc_glUniformMatrix4dv) numFailed++;
+	_ptrc_glUniformMatrix4x2dv = (void (CODEGEN_FUNCPTR *)(GLint, GLsizei, GLboolean, const GLdouble *))IntGetProcAddress("glUniformMatrix4x2dv");
+	if(!_ptrc_glUniformMatrix4x2dv) numFailed++;
+	_ptrc_glUniformMatrix4x3dv = (void (CODEGEN_FUNCPTR *)(GLint, GLsizei, GLboolean, const GLdouble *))IntGetProcAddress("glUniformMatrix4x3dv");
+	if(!_ptrc_glUniformMatrix4x3dv) numFailed++;
+	return numFailed;
+}
 
 void (CODEGEN_FUNCPTR *_ptrc_glTexStorage1D)(GLenum, GLsizei, GLenum, GLsizei) = NULL;
 void (CODEGEN_FUNCPTR *_ptrc_glTexStorage2D)(GLenum, GLsizei, GLenum, GLsizei, GLsizei) = NULL;
@@ -153,6 +216,25 @@ static int Load_KHR_debug()
 	if(!_ptrc_glPopDebugGroup) numFailed++;
 	_ptrc_glPushDebugGroup = (void (CODEGEN_FUNCPTR *)(GLenum, GLuint, GLsizei, const GLchar *))IntGetProcAddress("glPushDebugGroup");
 	if(!_ptrc_glPushDebugGroup) numFailed++;
+	return numFailed;
+}
+
+void (CODEGEN_FUNCPTR *_ptrc_glDebugMessageCallbackARB)(GLDEBUGPROCARB, const void *) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glDebugMessageControlARB)(GLenum, GLenum, GLenum, GLsizei, const GLuint *, GLboolean) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_glDebugMessageInsertARB)(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar *) = NULL;
+GLuint (CODEGEN_FUNCPTR *_ptrc_glGetDebugMessageLogARB)(GLuint, GLsizei, GLenum *, GLenum *, GLuint *, GLenum *, GLsizei *, GLchar *) = NULL;
+
+static int Load_ARB_debug_output()
+{
+	int numFailed = 0;
+	_ptrc_glDebugMessageCallbackARB = (void (CODEGEN_FUNCPTR *)(GLDEBUGPROCARB, const void *))IntGetProcAddress("glDebugMessageCallbackARB");
+	if(!_ptrc_glDebugMessageCallbackARB) numFailed++;
+	_ptrc_glDebugMessageControlARB = (void (CODEGEN_FUNCPTR *)(GLenum, GLenum, GLenum, GLsizei, const GLuint *, GLboolean))IntGetProcAddress("glDebugMessageControlARB");
+	if(!_ptrc_glDebugMessageControlARB) numFailed++;
+	_ptrc_glDebugMessageInsertARB = (void (CODEGEN_FUNCPTR *)(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar *))IntGetProcAddress("glDebugMessageInsertARB");
+	if(!_ptrc_glDebugMessageInsertARB) numFailed++;
+	_ptrc_glGetDebugMessageLogARB = (GLuint (CODEGEN_FUNCPTR *)(GLuint, GLsizei, GLenum *, GLenum *, GLuint *, GLenum *, GLsizei *, GLchar *))IntGetProcAddress("glGetDebugMessageLogARB");
+	if(!_ptrc_glGetDebugMessageLogARB) numFailed++;
 	return numFailed;
 }
 
@@ -1214,14 +1296,16 @@ typedef struct ogl_StrToExtMap_s
 	PFN_LOADFUNCPOINTERS LoadExtension;
 } ogl_StrToExtMap;
 
-static ogl_StrToExtMap ExtensionMap[4] = {
+static ogl_StrToExtMap ExtensionMap[6] = {
+	{"GL_ARB_gpu_shader_fp64", &ogl_ext_ARB_gpu_shader_fp64, Load_ARB_gpu_shader_fp64},
 	{"GL_ARB_texture_compression_bptc", &ogl_ext_ARB_texture_compression_bptc, NULL},
 	{"GL_ARB_texture_storage", &ogl_ext_ARB_texture_storage, Load_ARB_texture_storage},
 	{"GL_EXT_texture_compression_s3tc", &ogl_ext_EXT_texture_compression_s3tc, NULL},
 	{"GL_KHR_debug", &ogl_ext_KHR_debug, Load_KHR_debug},
+	{"GL_ARB_debug_output", &ogl_ext_ARB_debug_output, Load_ARB_debug_output},
 };
 
-static int g_extensionMapSize = 4;
+static int g_extensionMapSize = 6;
 
 static ogl_StrToExtMap *FindExtEntry(const char *extensionName)
 {
@@ -1238,10 +1322,12 @@ static ogl_StrToExtMap *FindExtEntry(const char *extensionName)
 
 static void ClearExtensionVars()
 {
+	ogl_ext_ARB_gpu_shader_fp64 = ogl_LOAD_FAILED;
 	ogl_ext_ARB_texture_compression_bptc = ogl_LOAD_FAILED;
 	ogl_ext_ARB_texture_storage = ogl_LOAD_FAILED;
 	ogl_ext_EXT_texture_compression_s3tc = ogl_LOAD_FAILED;
 	ogl_ext_KHR_debug = ogl_LOAD_FAILED;
+	ogl_ext_ARB_debug_output = ogl_LOAD_FAILED;
 }
 
 
