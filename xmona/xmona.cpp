@@ -10,6 +10,8 @@ xmona::xmona(QWidget *parent)
 {
 	ui.setupUi(this);
 
+	QObject::connect(ui.actionOpen, &QAction::triggered, this, &xmona::loadRefImage);
+
 	//
 	// Can I dynamically change the label image? I can!
 	//

@@ -13,6 +13,9 @@ public:
 	xmona(QWidget *parent = 0);
 	~xmona();
 
+public slots:
+	void loadRefImage(void) { OutputDebugStringA("Loading Ref Image"); }
+
 protected:
 	QOpenGLContext *m_platformContext;
 	MyGLWidget *m_glWidget;
