@@ -95,6 +95,7 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\stb_image.c" />
     <ClCompile Include="GeneratedFiles\Debug\moc_myglwidget.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
@@ -147,6 +148,7 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\stb_image.h" />
     <ClInclude Include="GeneratedFiles\ui_xmona.h" />
     <ClInclude Include="gl_core_3_3.h" />
     <ClInclude Include="zombolite.h" />

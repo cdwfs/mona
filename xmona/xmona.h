@@ -14,7 +14,7 @@ public:
 	~xmona();
 
 public slots:
-	void loadRefImage(void) { OutputDebugStringA("Loading Ref Image"); }
+	void loadRefImage(void);
 
 protected:
 	QOpenGLContext *m_platformContext;
