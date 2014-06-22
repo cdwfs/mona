@@ -103,4 +103,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\make_dist.py" />
+  </ItemGroup>
 </Project>

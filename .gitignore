@@ -27,4 +27,5 @@ test-*
 *.png
 
 build
+mona-win32
 src/GeneratedFiles
