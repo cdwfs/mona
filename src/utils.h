@@ -20,29 +20,29 @@
 	__pragma(warning(push)) \
 	__pragma(warning(disable:4127)) \
 	do { \
-	if (!(cond)) { \
-	char *buffer = (char*)malloc(1024); \
-	_snprintf_s(buffer, 1024, 1023, msg ## "\n", __VA_ARGS__); \
-	buffer[1023] = 0; \
-	OutputDebugStringA(buffer); \
-	free(buffer); \
-	IsDebuggerPresent() ? __debugbreak() : assert(cond); \
-	} \
+		if (!(cond)) { \
+			char *buffer = (char*)malloc(1024); \
+			_snprintf_s(buffer, 1024, 1023, msg ## "\n", __VA_ARGS__); \
+			buffer[1023] = 0; \
+			OutputDebugStringA(buffer); \
+			free(buffer); \
+			IsDebuggerPresent() ? __debugbreak() : assert(cond); \
+		} \
 	} while(0,0) \
 	__pragma(warning(pop))
 #define ZOMBOLITE_ASSERT_RETURN(cond,retval,msg,...) \
 	__pragma(warning(push)) \
 	__pragma(warning(disable:4127)) \
 	do { \
-	if (!(cond)) { \
-	char *buffer = (char*)malloc(1024); \
-	_snprintf_s(buffer, 1024, 1023, msg ## "\n", __VA_ARGS__); \
-	buffer[1023] = 0; \
-	OutputDebugStringA(buffer); \
-	free(buffer); \
-	IsDebuggerPresent() ? __debugbreak() : assert(cond); \
-	return (retval); \
-	} \
+		if (!(cond)) { \
+			char *buffer = (char*)malloc(1024); \
+			_snprintf_s(buffer, 1024, 1023, msg ## "\n", __VA_ARGS__); \
+			buffer[1023] = 0; \
+			OutputDebugStringA(buffer); \
+			free(buffer); \
+			IsDebuggerPresent() ? __debugbreak() : assert(cond); \
+			return (retval); \
+		} \
 	} while(0,0) \
 	__pragma(warning(pop))
 #else
@@ -51,21 +51,21 @@
 	__pragma(warning(push)) \
 	__pragma(warning(disable:4127)) \
 	do { \
-	if (!(cond)) { \
-	printf(buffer, msg ## "\n", __VA_ARGS__); \
-	assert(cond); \
-	} \
+		if (!(cond)) { \
+			printf(buffer, msg ## "\n", __VA_ARGS__); \
+			assert(cond); \
+		} \
 	} while(0,0) \
 	__pragma(warning(pop))
 #define ZOMBOLITE_ASSERT_RETURN(cond,retval,msg,...) \
 	__pragma(warning(push)) \
 	__pragma(warning(disable:4127)) \
 	do { \
-	if (!(cond)) { \
-	printf(buffer, msg ## "\n", __VA_ARGS__); \
-	assert(cond); \
-	return (retval); \
-	} \
+		if (!(cond)) { \
+			printf(buffer, msg ## "\n", __VA_ARGS__); \
+			assert(cond); \
+			return (retval); \
+		} \
 	} while(0,0) \
 	__pragma(warning(pop))
 #endif
@@ -77,16 +77,16 @@
 #if ENABLE_CUDA_CHECK
 #define CUDA_CHECK(val) \
 	do{ \
-	cudaError err = (val); \
-	if (err != cudaSuccess) { \
-	printf("CUDA error in %s:\n%d:\t%s\n%s\n", __FILE__, __LINE__, #val, cudaGetErrorString(err)); \
-	if (IsDebuggerPresent()) \
-	__debugbreak(); \
-				else \
+		cudaError err = (val); \
+		if (err != cudaSuccess) { \
+			printf("CUDA error in %s:\n%d:\t%s\n%s\n", __FILE__, __LINE__, #val, cudaGetErrorString(err)); \
+			if (IsDebuggerPresent()) \
+				__debugbreak(); \
+			else \
 				assert(err == cudaSuccess); \
-	} \
-	__pragma(warning(push)) \
-	__pragma(warning(disable:4127)) /* constant conditional */ \
+		} \
+		__pragma(warning(push)) \
+		__pragma(warning(disable:4127)) /* constant conditional */ \
 	} while(0) \
 	__pragma(warning(pop))
 #else
