@@ -6,8 +6,6 @@
 
 #include "utils.h"
 #include "stb_image.h"
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
 
 #include <direct.h>
 #include <float.h>
@@ -17,52 +15,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-
-// From evo.cu
-extern void getTextureReferences(const textureReference **outRefImg, const textureReference **outCurrImg);
-extern void setGpuConstants(const PsoConstants *constants);
-extern void launch_render(float4 *d_im, triangle *d_curr, int *d_currentTriangleIndex, float *d_currentScore, int imgWidth, int imgHeight, int imgPitch);
-extern void launch_renderproof(float4 * d_im, triangle * d_curr, int imgWidth, int imgHeight, int imgPitch);
-extern void launch_run(int32_t particleCount, triangle *d_curr, triangle *d_pos, triangle *d_vel, float *d_fit,
-	triangle *d_lbest, float *d_lbval, triangle *d_nbest, float *d_nbval, float *d_gbval,
-	int *d_K, int imgWidth, int imgHeight);
-
-// Clamp x to the range [min..max] (inclusive)
-static inline float clamp(float x, float min, float max)
-{
-	return (x<min) ? min : ( (x>max) ? max : x );
-}
-
-static inline float randf(void)
-{
-	return (float)( (float)rand() / (float)RAND_MAX );
-}
-
-static void randomizeTrianglePos(triangle *tri)
-{
-	tri->x1 = randf();
-	tri->y1 = randf();
-	tri->x2 = randf();
-	tri->y2 = randf();
-	tri->x3 = randf();
-	tri->y3 = randf();
-	tri->r = randf();
-	tri->g = randf();
-	tri->b = randf();
-}
-
-static void randomizeTriangleVel(triangle *tri)
-{
-	tri->x1 = randf() * 2.0f - 1.0f;
-	tri->y1 = randf() * 2.0f - 1.0f;
-	tri->x2 = randf() * 2.0f - 1.0f;
-	tri->y2 = randf() * 2.0f - 1.0f;
-	tri->x3 = randf() * 2.0f - 1.0f;
-	tri->y3 = randf() * 2.0f - 1.0f;
-	tri->r = randf() * 2.0f - 1.0f;
-	tri->g = randf() * 2.0f - 1.0f;
-	tri->b = randf() * 2.0f - 1.0f;
-}
 
 static void usage(void)
 {
@@ -102,6 +54,8 @@ OPTIONS:\n\
 int main(int argc, char *argv[])
 {
 	srand( (unsigned int)time(NULL) );
+
+	// CUDA initialization
 	int deviceCount = 0;
 	cudaGetDeviceCount(&deviceCount);
 	if (deviceCount != 1)
@@ -111,7 +65,6 @@ int main(int argc, char *argv[])
 	}
 	const int deviceId = 0;
 	CUDA_CHECK( cudaSetDevice(deviceId) );
-
 	cudaDeviceProp deviceProps;
 	CUDA_CHECK( cudaGetDeviceProperties(&deviceProps, deviceId) );
 	const int32_t deviceMpCount = deviceProps.multiProcessorCount;
@@ -235,9 +188,6 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	// Clear temp directory
-	// rm ./temp_images/*
-
 	// Load input image
 	const uint32_t *inputPixels = nullptr;
 	int imgWidth = -1, imgHeight = -1, imgNumComp = -1;
@@ -259,82 +209,15 @@ int main(int argc, char *argv[])
 		h_originalPixels[iPixel].z = (float)((inputPixels[iPixel] >> 16) & 0xFF) / 255.0f;
 		h_originalPixels[iPixel].w = (float)((inputPixels[iPixel] >> 24) & 0xFF) / 255.0f;
 	}
-	// Upload to GPU
-	float4 *d_originalPixels = nullptr; // Goim
-	size_t srcPitch = (size_t)imgWidth*sizeof(float4);
-	size_t originalPixelsPitch = 0;
-	CUDA_CHECK( cudaMallocPitch(&d_originalPixels, &originalPixelsPitch,                   srcPitch,           imgHeight) );
-	CUDA_CHECK( cudaMemcpy2D(    d_originalPixels,  originalPixelsPitch, h_originalPixels, srcPitch, srcPitch, imgHeight, cudaMemcpyHostToDevice) );
 
-	const textureReference *refImg = nullptr, *currImg = nullptr;
-	getTextureReferences(&refImg, &currImg);
-	cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float4>();
-	size_t offset = 0;
-	CUDA_CHECK( cudaBindTexture2D(&offset, refImg, d_originalPixels, &channelDesc, imgWidth, imgHeight, originalPixelsPitch) );
+	PsoContext *psoContext = new PsoContext;
+	psoContext->init(imgWidth, imgHeight, h_originalPixels, constants);
 
-	// Create array of solution triangles
-	triangle *h_currentTriangles = (triangle*)malloc(constants.maxTriangleCount*sizeof(triangle)); // curr
-	memset(h_currentTriangles, 0, constants.maxTriangleCount*sizeof(triangle));
-	triangle *d_currentTriangles = nullptr; // Gcurr
-	CUDA_CHECK( cudaMalloc(&d_currentTriangles,    constants.maxTriangleCount*sizeof(triangle)) );
-	CUDA_CHECK( cudaMemset( d_currentTriangles, 0, constants.maxTriangleCount*sizeof(triangle)) );
-	triangle *h_bestTriangles = (triangle*)malloc(constants.maxTriangleCount*sizeof(triangle)); // oldCurr
-	memcpy(h_bestTriangles, h_currentTriangles, constants.maxTriangleCount*sizeof(triangle));
-	triangle *d_bestTriangles = nullptr;
-	CUDA_CHECK( cudaMalloc(&d_bestTriangles, constants.maxTriangleCount*sizeof(triangle)) );
-	CUDA_CHECK( cudaMemcpy( d_bestTriangles, d_currentTriangles, constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
-
-
-	// Rendered solution on the GPU (and scaled-up version for final output)
-	float4 *d_currentPixels = nullptr; // Gim
-	CUDA_CHECK( cudaMallocPitch(&d_currentPixels, &originalPixelsPitch,    srcPitch, imgHeight) );
-	CUDA_CHECK( cudaMemset2D(    d_currentPixels,  originalPixelsPitch, 0, srcPitch, imgHeight) );
-	float4 *d_scaledOutputPixels = nullptr; // Gim3
-	size_t scaledPixelsPitch = 0;
-	CUDA_CHECK( cudaMallocPitch(&d_scaledOutputPixels, &scaledPixelsPitch,    constants.outputScale*srcPitch, constants.outputScale*imgHeight) );
-	CUDA_CHECK( cudaMemset2D(    d_scaledOutputPixels,  scaledPixelsPitch, 0, constants.outputScale*srcPitch, constants.outputScale*imgHeight) );
-	float4 *h_scaledOutputPixels   =   (float4*)malloc(constants.outputScale*imgWidth*constants.outputScale*imgHeight*sizeof(float4));
-	uint32_t *scaledOutputRgba8888 = (uint32_t*)malloc(constants.outputScale*imgWidth*constants.outputScale*imgHeight*sizeof(uint32_t));
-
-	// Index of triangle currently being updated
-	int32_t currentTriangleIndex = 0; // K
-	int32_t *d_currentTriangleIndex = nullptr; // GK
-	CUDA_CHECK( cudaMalloc(&d_currentTriangleIndex, sizeof(int32_t)) );
-
-	// Current score of this iteration, and best score to date
-	float currentScore = FLT_MAX, bestScore = FLT_MAX;
-	float *d_currentScore = nullptr; // Gscore
-	CUDA_CHECK( cudaMalloc(&d_currentScore, sizeof(float)) );
-	CUDA_CHECK( cudaMemcpy(d_currentScore, &currentScore, sizeof(float), cudaMemcpyHostToDevice) );
-
-	// PSO arrays
-	triangle *h_psoParticlesPos          = (triangle*)malloc(constants.psoParticleCount*sizeof(triangle)); // pos
-	triangle *h_psoParticlesVel          = (triangle*)malloc(constants.psoParticleCount*sizeof(triangle)); // vel
-	float *h_psoParticlesFit             =    (float*)malloc(constants.psoParticleCount*sizeof(float));    // fit
-	triangle *h_psoParticlesLocalBestPos = (triangle*)malloc(constants.psoParticleCount*sizeof(triangle)); // lbest
-	float *h_psoParticlesLocalBestFit    =    (float*)malloc(constants.psoParticleCount*sizeof(float));    // lbval
-	triangle *h_psoParticlesNhoodBestPos = (triangle*)malloc(constants.psoParticleCount*sizeof(triangle)); // nbest
-	float *h_psoParticlesNhoodBestFit    =    (float*)malloc(constants.psoParticleCount*sizeof(float));    // nbval
-	float psoParticlesGlobalBestFit      = FLT_MAX;    // gbval
-	triangle *d_psoParticlesPos          = nullptr;    // Gpos
-	triangle *d_psoParticlesVel          = nullptr;    // Gvel
-	float *d_psoParticlesFit             = nullptr;    // Gfit
-	triangle *d_psoParticlesLocalBestPos = nullptr;    // Glbest
-	float *d_psoParticlesLocalBestFit    = nullptr;    // Glbval
-	triangle *d_psoParticlesNhoodBestPos = nullptr;    // Gnbest
-	float *d_psoParticlesNhoodBestFit    = nullptr;    // Gnbval
-	float *d_psoParticlesGlobalBestFit   = nullptr;    // Ggbval
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesPos,          constants.psoParticleCount*sizeof(triangle)) );
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesVel,          constants.psoParticleCount*sizeof(triangle)) );
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesFit,          constants.psoParticleCount*sizeof(float)) );
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesLocalBestPos, constants.psoParticleCount*sizeof(triangle)) );
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesLocalBestFit, constants.psoParticleCount*sizeof(float)) );
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesNhoodBestPos, constants.psoParticleCount*sizeof(triangle)) );
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesNhoodBestFit, constants.psoParticleCount*sizeof(float)) );
-	CUDA_CHECK( cudaMalloc(&d_psoParticlesGlobalBestFit,                     sizeof(float)) );
-
-	// Upload constants to GPU
-	setGpuConstants(&constants);
+	if (nullptr != outTempDirName)
+	{
+		// TODO: Clear temp directory
+		// rm ./temp_images/*
+	}
 
 	// Open stats file, if necessary
 	FILE *statsFile = nullptr;
@@ -365,99 +248,26 @@ int main(int argc, char *argv[])
 	cpuTimer.Start();
 	for(int32_t iIter=1; iIter<=constants.iterationCount; ++iIter)
 	{
-		// Choose a new random triangle to update
-		currentTriangleIndex = rand() % min((iIter+1)/2, constants.maxTriangleCount);
-		CUDA_CHECK( cudaMemcpy(d_currentTriangleIndex, &currentTriangleIndex, sizeof(int32_t), cudaMemcpyHostToDevice) );
-
-		// Render initial solution
-		launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore, imgWidth, imgHeight, originalPixelsPitch/sizeof(float4));
-		CUDA_CHECK( cudaBindTexture2D(&offset, currImg, d_currentPixels, &channelDesc, imgWidth, imgHeight, originalPixelsPitch) );
-		CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
-
-		// check that this isn't a huge regression, revert and pick new K if so
-		if (currentScore * (1.0f - 2.0f / (float)constants.maxTriangleCount) > bestScore)
-		{
-			memcpy(h_currentTriangles, h_bestTriangles, constants.maxTriangleCount*sizeof(triangle));
-			CUDA_CHECK( cudaMemcpy(d_currentTriangles, h_currentTriangles, constants.maxTriangleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
-			launch_render(d_currentPixels, d_currentTriangles, d_currentTriangleIndex, d_currentScore, imgWidth, imgHeight, originalPixelsPitch/sizeof(float4));
-			CUDA_CHECK( cudaMemcpy(&currentScore, d_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
-		}
-
-		// Update best score if needed
-		if (currentScore < bestScore && currentScore != 0)
-		{
-			bestScore = currentScore;
-			// Update best known solution
-			memcpy(h_bestTriangles, h_currentTriangles, constants.maxTriangleCount*sizeof(triangle));
-		}
+		psoContext->iterate();
 
 		// Print output
-		const float mse = bestScore / (float)(3*imgWidth*imgHeight);
-		const float psnr = 10.0f * log10(1.0f * 1.0f / mse);
 		cpuTimer.Update();
-		printf("%7.2fs (gen %4d)   bestScore: %.4f   PSNR: %.4f dB\n", cpuTimer.GetElapsedSeconds(), iIter, bestScore, psnr);
+		const float bestPsnr = psoContext->bestPsnr();
+		printf("%7.2fs (gen %4d)   bestScore: %.4f   PSNR: %.4f dB\n", cpuTimer.GetElapsedSeconds(),
+			iIter, psoContext->bestScore(), bestPsnr);
 		if (nullptr != statsFile)
 		{
-			fprintf(statsFile, "%6d\t\t%7.2f\t\t%12.4f\n", iIter, cpuTimer.GetElapsedSeconds(), psnr);
+			fprintf(statsFile, "%6d\t\t%7.2f\t\t%12.4f\n", iIter, cpuTimer.GetElapsedSeconds(), bestPsnr);
 		}
-
-		// texturize current solution
-		CUDA_CHECK( cudaBindTexture2D(&offset, currImg, d_currentPixels, &channelDesc, imgWidth, imgHeight, originalPixelsPitch) );
-
-		// create random data for this PSO iter, and send to device
-		for(int32_t iParticle=0; iParticle<constants.psoParticleCount; ++iParticle)
-		{
-			randomizeTrianglePos(h_psoParticlesPos+iParticle);
-			randomizeTriangleVel(h_psoParticlesVel+iParticle);
-			h_psoParticlesFit[iParticle] = FLT_MAX;
-			randomizeTrianglePos(h_psoParticlesLocalBestPos+iParticle);
-			h_psoParticlesLocalBestFit[iParticle] = FLT_MAX;
-			randomizeTrianglePos(h_psoParticlesNhoodBestPos+iParticle);
-			h_psoParticlesNhoodBestFit[iParticle] = FLT_MAX;
-		}
-		psoParticlesGlobalBestFit = FLT_MAX;
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesPos,          h_psoParticlesPos,          constants.psoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesVel,          h_psoParticlesVel,          constants.psoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesFit,          h_psoParticlesFit,          constants.psoParticleCount*sizeof(float),    cudaMemcpyHostToDevice) );
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesLocalBestPos, h_psoParticlesLocalBestPos, constants.psoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesLocalBestFit, h_psoParticlesLocalBestFit, constants.psoParticleCount*sizeof(float),    cudaMemcpyHostToDevice) );
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesNhoodBestPos, h_psoParticlesNhoodBestPos, constants.psoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesNhoodBestFit, h_psoParticlesNhoodBestFit, constants.psoParticleCount*sizeof(float),    cudaMemcpyHostToDevice) );
-		CUDA_CHECK( cudaMemcpy(d_psoParticlesGlobalBestFit, &psoParticlesGlobalBestFit,                         1*sizeof(float),    cudaMemcpyHostToDevice) );
-
-		// run the pso kernel! the big one!
-		launch_run(constants.psoParticleCount, d_currentTriangles, d_psoParticlesPos, d_psoParticlesVel, d_psoParticlesFit,
-			d_psoParticlesLocalBestPos, d_psoParticlesLocalBestFit,
-			d_psoParticlesNhoodBestPos, d_psoParticlesNhoodBestFit,
-			d_psoParticlesGlobalBestFit,
-			d_currentTriangleIndex, imgWidth, imgHeight);
-
-		// Copy current solution back to host
-		CUDA_CHECK( cudaMemcpy(h_currentTriangles, d_currentTriangles, constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToHost) );
 
 		// Visual output
 		if (nullptr != outTempDirName && (iIter % 100) == 0)
 		{
-			CUDA_CHECK( cudaMemcpy(d_bestTriangles, d_currentTriangles, constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
-			launch_renderproof(d_scaledOutputPixels, d_bestTriangles, constants.outputScale*imgWidth, constants.outputScale*imgHeight, scaledPixelsPitch/sizeof(float4));
-			CUDA_CHECK( cudaMemcpy2D(h_scaledOutputPixels,  constants.outputScale*srcPitch, d_scaledOutputPixels, scaledPixelsPitch, constants.outputScale*srcPitch, constants.outputScale*imgHeight, cudaMemcpyDeviceToHost) );
-			// Convert to RGBA8888 for output
-			for(int32_t iPixel=0; iPixel<constants.outputScale*imgWidth*constants.outputScale*imgHeight; ++iPixel)
-			{
-				scaledOutputRgba8888[iPixel] =
-					( uint32_t(clamp(h_scaledOutputPixels[iPixel].x * 255.0f, 0.0f, 255.0f)) <<  0 ) |
-					( uint32_t(clamp(h_scaledOutputPixels[iPixel].y * 255.0f, 0.0f, 255.0f)) <<  8 ) |
-					( uint32_t(clamp(h_scaledOutputPixels[iPixel].z * 255.0f, 0.0f, 255.0f)) << 16 ) |
-					( uint32_t(clamp(h_scaledOutputPixels[iPixel].w * 255.0f, 0.0f, 255.0f)) << 24 );
-			}
-			// Write output image
 			char tempImageFileName[128];
 			_snprintf_s(tempImageFileName, 127, "./%s/%05d.png", outTempDirName, iIter);
 			tempImageFileName[127] = 0;
 			printf("Writing '%s'...\n", tempImageFileName);
-			int32_t writeError = stbi_write_png(tempImageFileName, constants.outputScale*imgWidth, constants.outputScale*imgHeight,
-				4, scaledOutputRgba8888, constants.outputScale*imgWidth*sizeof(uint32_t));
-			if (writeError == 0)
+			if (0 != psoContext->renderToFile(tempImageFileName))
 			{
 				fprintf(stderr, "Error writing temporary output image '%s'\n", tempImageFileName);
 				return -1;
@@ -466,29 +276,11 @@ int main(int argc, char *argv[])
 	}
 
 	// Write final output image
+	printf("Writing '%s'...\n", outImageFileName);
+	if (0 != psoContext->renderToFile(outImageFileName) != 0)
 	{
-		CUDA_CHECK( cudaMemcpy(d_bestTriangles, d_currentTriangles, constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
-		launch_renderproof(d_scaledOutputPixels, d_bestTriangles, constants.outputScale*imgWidth, constants.outputScale*imgHeight, scaledPixelsPitch/sizeof(float4));
-		CUDA_CHECK( cudaMemcpy2D(h_scaledOutputPixels,  constants.outputScale*srcPitch, d_scaledOutputPixels, scaledPixelsPitch, constants.outputScale*srcPitch, constants.outputScale*imgHeight, cudaMemcpyDeviceToHost) );
-		// Convert to RGBA8888 for output
-		for(int32_t iPixel=0; iPixel<constants.outputScale*imgWidth*constants.outputScale*imgHeight; ++iPixel)
-		{
-			scaledOutputRgba8888[iPixel] =
-				( uint32_t(clamp(h_scaledOutputPixels[iPixel].x * 255.0f, 0.0f, 255.0f)) <<  0 ) |
-				( uint32_t(clamp(h_scaledOutputPixels[iPixel].y * 255.0f, 0.0f, 255.0f)) <<  8 ) |
-				( uint32_t(clamp(h_scaledOutputPixels[iPixel].z * 255.0f, 0.0f, 255.0f)) << 16 ) |
-				(                                                                   0xFF << 24 );
-		}
-		// Write output image.
-		// TODO: select output format from [jpg, png, bmp]?
-		printf("Writing '%s'...\n", outImageFileName);
-		int32_t writeError = stbi_write_png(outImageFileName, constants.outputScale*imgWidth, constants.outputScale*imgHeight,
-			4, scaledOutputRgba8888, constants.outputScale*imgWidth*sizeof(uint32_t));
-		if (writeError == 0)
-		{
-			fprintf(stderr, "Error writing final output image '%s'\n", outImageFileName);
-			return -1;
-		}
+		fprintf(stderr, "Error writing final output image '%s'\n", outImageFileName);
+		return -1;
 	}
 
 	// cleanup -- lots more to do here
@@ -496,6 +288,7 @@ int main(int argc, char *argv[])
 	{
 		fclose(statsFile);
 	}
-	free((void*)inputPixels);
+	stbi_image_free((void*)inputPixels);
+	delete psoContext;
 	cudaDeviceReset();
 }

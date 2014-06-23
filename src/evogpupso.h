@@ -46,3 +46,69 @@ struct triangle {
 };
 
 static_assert(sizeof(triangle) / sizeof(float) == kEvoNumFloatsPerTriangle, "sizeof(triangle) does not match expected value!");
+
+class PsoContext
+{
+public:
+	PsoContext();
+	~PsoContext();
+
+	int init(int imgWidth, int imgHeight, const float4 *h_originalPixels, const PsoConstants &constants);
+
+	/**
+	 * @brief Run one iteration of PSO.
+	 */
+	void iterate(void);
+
+	float bestScore(void) const { return m_bestScore; }
+	float bestPsnr(void) const;
+
+	int renderToFile(const char *imageFileName);
+
+private:
+	PsoConstants m_constants;
+	int32_t m_currentIteration; ///< Current PSO iteration.
+	int32_t m_imgWidth; ///< Width of reference image, in pixels.
+	int32_t m_imgHeight; ///< Height of reference image, in pixels.
+	size_t m_originalPixelsPitch; ///< Pitch of md_originalPixels, in bytes.
+
+	float4 *md_originalPixels; ///< Original reference pixels. [device memory]
+	float4 *md_currentPixels; ///< Current candidate image pixels. Unscaled; same dimensions as original pixels. [device memory]
+	float4 *mh_scaledOutputPixels; ///< Used to render final scaled output pixels. [host memory]
+	float4 *md_scaledOutputPixels; ///< Used to render final scaled output pixels. [device memory]
+	uint32_t *mh_scaledOutputRgba8888; ///< Final scaled output pixels in RGBA8888 format, ready to write to disk. [host memory]
+	size_t m_scaledPixelsPitch; ///< Pitch of md_scaledOutputPixels, in bytes.
+	const textureReference *m_refImg; ///< Reference to reference pixels as a CUDA texture.
+	const textureReference *m_currImg; ///< Refernce to current candidate pixels as a CUDA texture.
+	cudaChannelFormatDesc m_channelDesc; ///< texture format for m_refImg and m_currImg.
+	triangle *mh_currentTriangles; ///< Current candidate triangles. [host memory]
+	triangle *md_currentTriangles; ///< Current candidate triangles. [device memory]
+	triangle *mh_bestTriangles; ///< Best candidate triangles found so far. [host memory]
+	triangle *md_bestTriangles; ///< Best candidate triangles found so far. [device memory]
+	int32_t *md_currentTriangleIndex; ///< Index of the triangle currently being processed. [device memory]
+	float m_currentScore; ///< Sum of squared error across all md_currentPixels.
+	float *md_currentScore; ///< Sum of squared error across all md_currentPixels. [device memory]
+	float m_bestScore; ///< Best squared error across all candidate pixels seen so far.
+
+	triangle *mh_psoParticlesPos; ///< Current position of each PSO particle. [host memory]
+	triangle *md_psoParticlesPos; ///< Current position of each PSO particle. [device memory]
+	triangle *mh_psoParticlesVel; ///< Current velocity of each PSO particle. Range is [-1..1]. [host memory]
+	triangle *md_psoParticlesVel; ///< Current velocity of each PSO particle. Range is [-1..1]. [device memory]
+	float    *mh_psoParticlesFit; ///< Current summed-squared-error contribution of each particle. [host memory]
+	float    *md_psoParticlesFit; ///< Current summed-squared-error contribution of each particle. [device memory]
+	triangle *mh_psoParticlesLocalBestPos; ///< Best position found so far for each particle. [host memory]
+	triangle *md_psoParticlesLocalBestPos; ///< Best position found so far for each particle. [device memory]
+	float    *mh_psoParticlesLocalBestFit; ///< Lowest summed-squared-error found so far for each particle so far. [host memory]
+	float    *md_psoParticlesLocalBestFit; ///< Lowest summed-squared-error found so far for each particle so far. [device memory]
+	triangle *mh_psoParticlesNhoodBestPos; ///< Best position found to date among each neighborhood of particles. [host memory]
+	triangle *md_psoParticlesNhoodBestPos; ///< Best position found to date among each neighborhood of particles. [device memory]
+	float    *mh_psoParticlesNhoodBestFit; ///< Lowest summed-squared-error found so far among each neighborhood of particles. [host memory]
+	float    *md_psoParticlesNhoodBestFit; ///< Lowest summed-squared-error found so far among each neighborhood of particles. [device memory]
+	float      m_psoParticlesGlobalBestFit; ///< Lowest summed-squared-error found so far among all particles.
+	float    *md_psoParticlesGlobalBestFit; ///< Lowest summed-squared-error found so far among all particles. [device memory]
+
+	void setGpuConstants(const PsoConstants *constants);
+	void launchRender();
+	void launchRenderProof();
+	void launchRun();
+};
