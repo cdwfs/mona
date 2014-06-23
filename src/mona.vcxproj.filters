@@ -35,19 +35,19 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="mona_main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="xmona.cpp">
+    <ClCompile Include="mona.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_xmona.cpp">
+    <ClCompile Include="GeneratedFiles\Debug\moc_mona.cpp">
       <Filter>Generated Files\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_xmona.cpp">
+    <ClCompile Include="GeneratedFiles\Release\moc_mona.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\qrc_xmona.cpp">
+    <ClCompile Include="GeneratedFiles\qrc_mona.cpp">
       <Filter>Generated Files</Filter>
     </ClCompile>
     <ClCompile Include="myglwidget.cpp">
@@ -71,18 +71,18 @@
     <ClCompile Include="zombolite_string.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\stb_image.c">
+    <ClCompile Include="stb_image.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="xmona.h">
+    <CustomBuild Include="mona.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
-    <CustomBuild Include="xmona.ui">
+    <CustomBuild Include="mona.ui">
       <Filter>Form Files</Filter>
     </CustomBuild>
-    <CustomBuild Include="xmona.qrc">
+    <CustomBuild Include="mona.qrc">
       <Filter>Resource Files</Filter>
     </CustomBuild>
     <CustomBuild Include="myglwidget.h">
@@ -90,7 +90,7 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GeneratedFiles\ui_xmona.h">
+    <ClInclude Include="GeneratedFiles\ui_mona.h">
       <Filter>Generated Files</Filter>
     </ClInclude>
     <ClInclude Include="gl_core_3_3.h">
@@ -99,7 +99,7 @@
     <ClInclude Include="zombolite.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\stb_image.h">
+    <ClInclude Include="stb_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

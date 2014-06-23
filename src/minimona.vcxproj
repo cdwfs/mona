@@ -17,8 +17,8 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{9C493947-1E95-44C2-9508-F4A2939FBE4D}</ProjectGuid>
-    <RootNamespace>evogpupso</RootNamespace>
-    <ProjectName>evogpupso</ProjectName>
+    <RootNamespace>mona</RootNamespace>
+    <ProjectName>minimona</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -46,11 +46,13 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(ProjectDir)</OutDir>
+    <OutDir>$(ProjectDir)..\</OutDir>
     <TargetName>$(ProjectName)-debug</TargetName>
+    <IntDir>$(OutDir)build\$(ProjectName)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(ProjectDir)</OutDir>
+    <OutDir>$(ProjectDir)..\</OutDir>
+    <IntDir>$(OutDir)build\$(ProjectName)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -103,7 +105,7 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="evo.cu">
+    <CudaCompile Include="evogpupso.cu">
       <Defines Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">WIN32</Defines>
       <Defines Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">WIN32</Defines>
     </CudaCompile>
@@ -115,13 +117,13 @@
     <ClInclude Include="utils.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="evogpupso_main.cpp" />
+    <ClCompile Include="minimona_main.cpp" />
     <ClCompile Include="stb_image.c" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="README.md" />
-    <None Include="test.py" />
+    <None Include="..\README.md" />
+    <None Include="..\test.py" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

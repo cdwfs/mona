@@ -67,7 +67,7 @@ static void randomizeTriangleVel(triangle *tri)
 static void usage(void)
 {
 	printf("\
-Usage: evogpupso [OPTIONS] <input image>\n\
+Usage: minimona [OPTIONS] <input image>\n\
 OPTIONS:\n\
 -out FILE.png      Write final output image to FILE.png [default: %s]\n\
 -stats FILE        Write per-generation statistics to FILE [default: none]\n\

@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{7F163BBF-8E95-4FE4-A4DF-B72A35CE4055}") = "evogpupso", "evogpupso.vcxproj", "{9C493947-1E95-44C2-9508-F4A2939FBE4D}"
+Project("{7F163BBF-8E95-4FE4-A4DF-B72A35CE4055}") = "minimona", "minimona.vcxproj", "{9C493947-1E95-44C2-9508-F4A2939FBE4D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xmona", "xmona\xmona.vcxproj", "{86FEB698-3C42-4FD7-948A-3DE2F74106CB}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mona", "mona.vcxproj", "{86FEB698-3C42-4FD7-948A-3DE2F74106CB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

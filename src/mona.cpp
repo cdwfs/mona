@@ -1,4 +1,4 @@
-#include "xmona.h"
+#include "mona.h"
 
 #include "../stb_image.h"
 
@@ -9,12 +9,12 @@
 #include <cassert>
 #include <cstdint>
 
-xmona::xmona(QWidget *parent)
+mona::mona(QWidget *parent)
 	: QMainWindow(parent)
 {
 	ui.setupUi(this);
 
-	QObject::connect(ui.actionOpen, &QAction::triggered, this, &xmona::loadRefImage);
+	QObject::connect(ui.actionOpen, &QAction::triggered, this, &mona::loadRefImage);
 
 	//
 	// Set up the OpenGL view to render the evolved image
@@ -36,16 +36,17 @@ xmona::xmona(QWidget *parent)
 	QGLContext *widgetGlContext = QGLContext::fromOpenGLContext(m_platformContext);
 
 	m_glWidget = new MyGLWidget(widgetGlContext, this);
+	ui.verticalLayout->setGeometry(QRect(0,0,256,256));
 	ui.verticalLayout->addWidget(m_glWidget);
 }
 
-xmona::~xmona()
+mona::~mona()
 {
 	delete m_glWidget;
 	delete m_platformContext;
 }
 
-void xmona::loadRefImage(void)
+void mona::loadRefImage(void)
 {
 	bool success = true;
 

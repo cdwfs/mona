@@ -16,7 +16,7 @@ inputs = [
 ]
 
 if __name__ == "__main__":
-    #TODO: build evogpupso
+    #TODO: build executable
 
     out_dir = "test-" + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     os.mkdir(out_dir)
@@ -62,7 +62,7 @@ plot """)
         stats_file = path.join(out_dir, root+"-out.dat")
         temp_dir = path.join(out_dir, root)
         os.mkdir(temp_dir)
-        subprocess.call(["evogpupso",
+        subprocess.call(["minimona",
                          "-out", out_file,
                          "-stats", stats_file,
                          "-temp", temp_dir,

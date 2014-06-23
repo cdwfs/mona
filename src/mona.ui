@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>xmonaClass</class>
- <widget class="QMainWindow" name="xmonaClass">
+ <class>monaWindow</class>
+ <widget class="QMainWindow" name="monaWindow">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>xmona</string>
+   <string>mona</string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <widget class="QWidget" name="verticalLayoutWidget">
@@ -143,14 +143,14 @@
      <height>26</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menuXMona">
+   <widget class="QMenu" name="menuMona">
     <property name="title">
      <string>&amp;File</string>
     </property>
     <addaction name="actionOpen"/>
     <addaction name="actionQuit"/>
    </widget>
-   <addaction name="menuXMona"/>
+   <addaction name="menuMona"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
@@ -180,13 +180,13 @@
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources>
-  <include location="xmona.qrc"/>
+  <include location="mona.qrc"/>
  </resources>
  <connections>
   <connection>
    <sender>actionQuit</sender>
    <signal>triggered()</signal>
-   <receiver>xmonaClass</receiver>
+   <receiver>monaWindow</receiver>
    <slot>close()</slot>
    <hints>
     <hint type="sourcelabel">

@@ -1,17 +1,16 @@
-#ifndef XMONA_H
-#define XMONA_H
+#pragma once
 
 #include <QtWidgets/QMainWindow>
-#include "ui_xmona.h"
+#include "ui_mona.h"
 #include "myglwidget.h"
 
-class xmona : public QMainWindow, Ui_xmonaClass
+class mona : public QMainWindow, Ui_monaWindow
 {
 	Q_OBJECT
 
 public:
-	xmona(QWidget *parent = 0);
-	~xmona();
+	mona(QWidget *parent = 0);
+	~mona();
 
 public slots:
 	void loadRefImage(void);
@@ -21,7 +20,5 @@ protected:
 	MyGLWidget *m_glWidget;
 
 private:
-	Ui::xmonaClass ui;
+	Ui::monaWindow ui;
 };
-
-#endif // XMONA_H

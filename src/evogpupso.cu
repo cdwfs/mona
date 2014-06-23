@@ -37,7 +37,6 @@ __constant__ int dkEvoPsoNeighborhoodSize;
 __constant__ float dkEvoPsoSpringConstant;
 __constant__ float dkEvoPsoDampeningFactor;
 
-
 // adds a triangle to the working image, or subtracts it if add==0
 inline   __device__  void addtriangle(float4 * img, triangle * tri, bool add, float imgWidth, float imgHeight, int imgPitch)
 {

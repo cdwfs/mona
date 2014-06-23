@@ -12,7 +12,7 @@
     <ClCompile Include="utils.cpp">
       <Filter>boilerplate</Filter>
     </ClCompile>
-    <ClCompile Include="evogpupso_main.cpp" />
+    <ClCompile Include="minimona_main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="utils.h">
@@ -27,10 +27,10 @@
     <ClInclude Include="evogpupso.h" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="evo.cu" />
+    <None Include="..\README.md" />
+    <None Include="..\test.py" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="README.md" />
-    <None Include="test.py" />
+    <CudaCompile Include="evogpupso.cu" />
   </ItemGroup>
 </Project>

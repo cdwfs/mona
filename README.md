@@ -1,7 +1,5 @@
-EvoGpuPso
-=========
-*(I pronounce it "EE-vawg PUP-soe")*
-
+Mona
+====
 This is me trying to write an efficient (near-realtime, ideally!) implementation
 of triangle-based image approximation, as popularized by Roger Alsing's
 [EvoLisa](http://rogeralsing.com/2008/12/07/genetic-programming-evolution-of-mona-lisa/) project.
@@ -22,7 +20,7 @@ Here's the Mona Lisa approximated with 500 triangles over 2400 iterations. Each 
 represents 100 iterations of the algorithm. This sequence took about 3m20s minutes to
 evolve on my laptop's 650M:
 
-![image](https://raw.githubusercontent.com/cdwfs/evogpupso/master/lisa.gif)
+![image](https://raw.githubusercontent.com/cdwfs/mona/master/lisa.gif)
 
 Change Log
 ----------
@@ -94,7 +92,7 @@ In no particular order; just listed here so I don't forget:
 
 Build Environment
 -----------------
-Here's what I use to build and run EvoGpuPso.
+Here's what I use to build and run Mona.
  - Windows 7
  - Visual Studio 2010
  - CUDA Toolkit 6.0
