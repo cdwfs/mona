@@ -202,6 +202,7 @@ int main(int argc, char *argv[])
 
 	PsoContext *psoContext = new PsoContext;
 	psoContext->init(imgWidth, imgHeight, h_originalPixels, constants);
+	free(h_originalPixels);
 
 	if (nullptr != outTempDirName)
 	{
