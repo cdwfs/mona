@@ -69,7 +69,8 @@ if __name__ == "__main__":
     else:
         compressMethod = zipfile.ZIP_DEFLATED
     with zipfile.ZipFile(dist_zip_path, "w", compression=compressMethod) as dist_zip:
-        for f in os.listdir(dist_dir):
-            print("\t%s" % f)
-            dist_zip.write(os.path.join(dist_dir, f))
+        for dirpath, _, filenames in os.walk(dist_dir):
+            for f in filenames:
+                print("\t%s" % os.path.join(dirpath, f))
+                dist_zip.write(os.path.join(dirpath, f))
     print("Wrote %d bytes to %s" % (os.path.getsize(dist_zip_path), dist_zip_path))
