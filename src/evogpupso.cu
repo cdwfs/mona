@@ -876,6 +876,6 @@ void PsoContext::launchRun(void)
 		md_psoParticlesLocalBestPos, md_psoParticlesLocalBestFit,
 		md_psoParticlesNhoodBestPos, md_psoParticlesNhoodBestFit,
 		md_psoParticlesGlobalBestFit,
-		md_currentTriangleIndex, m_imgWidth, m_imgHeight);
+		md_currentTriangleIndex, (float)m_imgWidth, (float)m_imgHeight);
 	CUDA_CHECK( cudaGetLastError() );
 }
