@@ -608,7 +608,7 @@ PsoContext::~PsoContext(void)
 	CUDA_CHECK( cudaFree(md_bestTriangles) );
 	CUDA_CHECK( cudaFree(md_currentTriangleIndex) );
 	m_currentScore = 0;
-	md_currentScore = nullptr;
+	CUDA_CHECK( cudaFree( md_currentScore ) );
 	m_bestScore = 0;
 	free(mh_psoParticlesPos);
 	CUDA_CHECK( cudaFree(md_psoParticlesPos) );
