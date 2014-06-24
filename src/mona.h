@@ -1,8 +1,10 @@
 #pragma once
 
-#include <QtWidgets/QMainWindow>
+#include "evogpupso.h"
 #include "ui_mona.h"
 #include "myglwidget.h"
+
+#include <QtWidgets/QMainWindow>
 
 class mona : public QMainWindow, Ui_monaWindow
 {
@@ -18,7 +20,8 @@ public slots:
 protected:
 	QOpenGLContext *m_platformContext;
 	MyGLWidget *m_glWidget;
-
+	PsoConstants *m_psoConstants;
+	PsoContext *m_psoContext;
 private:
 	Ui::monaWindow ui;
 };

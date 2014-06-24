@@ -29,10 +29,11 @@ int main(int argc, char *argv[])
 	cudaDeviceProp deviceProps;
 	CUDA_CHECK( cudaGetDeviceProperties(&deviceProps, deviceId) );
 
-	mona w;
-	w.show();
+	mona *w = new mona;
+	w->show();
 	int appReturn = a.exec();
 
+	delete w;
 	cudaDeviceReset();
 	return appReturn;
 }

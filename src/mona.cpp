@@ -11,6 +11,10 @@
 
 mona::mona(QWidget *parent)
 	: QMainWindow(parent)
+	, m_platformContext(nullptr)
+	, m_glWidget(nullptr)
+	, m_psoConstants(nullptr)
+	, m_psoContext(nullptr)
 {
 	ui.setupUi(this);
 
@@ -38,12 +42,17 @@ mona::mona(QWidget *parent)
 	m_glWidget = new MyGLWidget(widgetGlContext, this);
 	ui.verticalLayout->setGeometry(QRect(0,0,256,256));
 	ui.verticalLayout->addWidget(m_glWidget);
+
+	m_psoConstants = new PsoConstants;
+	m_psoContext = new PsoContext;
 }
 
 mona::~mona()
 {
 	delete m_glWidget;
 	delete m_platformContext;
+	delete m_psoConstants;
+	delete m_psoContext;
 }
 
 void mona::loadRefImage(void)
@@ -69,16 +78,15 @@ void mona::loadRefImage(void)
 	if (success)
 	{
 		// Convert to F32x4, as expected by the CUDA code.
-		/*
-		float4 *h_originalPixels = (float4*)malloc(imgWidth*imgHeight*sizeof(float4));
-		for(int32_t iPixel=0; iPixel<imgWidth*imgHeight; ++iPixel)
+		float4 *h_originalPixels = (float4*)malloc(refImageWidth*refImageHeight*sizeof(float4));
+		for(int32_t iPixel=0; iPixel<refImageWidth*refImageHeight; ++iPixel)
 		{
-			h_originalPixels[iPixel].x = (float)((inputPixels[iPixel] >>  0) & 0xFF) / 255.0f;
-			h_originalPixels[iPixel].y = (float)((inputPixels[iPixel] >>  8) & 0xFF) / 255.0f;
-			h_originalPixels[iPixel].z = (float)((inputPixels[iPixel] >> 16) & 0xFF) / 255.0f;
-			h_originalPixels[iPixel].w = (float)((inputPixels[iPixel] >> 24) & 0xFF) / 255.0f;
+			h_originalPixels[iPixel].x = (float)((refImagePixels[iPixel] >>  0) & 0xFF) / 255.0f;
+			h_originalPixels[iPixel].y = (float)((refImagePixels[iPixel] >>  8) & 0xFF) / 255.0f;
+			h_originalPixels[iPixel].z = (float)((refImagePixels[iPixel] >> 16) & 0xFF) / 255.0f;
+			h_originalPixels[iPixel].w = (float)((refImagePixels[iPixel] >> 24) & 0xFF) / 255.0f;
 		}
-		*/
+		m_psoContext->init(refImageWidth, refImageHeight, h_originalPixels, *m_psoConstants);
 
 		// TODO: resize label to match image aspect ratio. Need to center it within the frame, though.
 		// For now, we just stretch to square.
@@ -90,8 +98,9 @@ void mona::loadRefImage(void)
 		QImage refImage( (uchar*)refImagePixels, refImageWidth, refImageHeight, QImage::Format_RGBA8888 );
 		ui.refImageLabel->setPixmap(QPixmap::fromImage(refImage));
 
-		// Original pixels are no longer needed.
+		// Original pixels are no longer needed in host memory
 		stbi_image_free(const_cast<uint32_t*>(refImagePixels));
+		free(h_originalPixels);
 	}
 
 	if (!success)
