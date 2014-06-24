@@ -16,7 +16,15 @@ inputs = [
 ]
 
 if __name__ == "__main__":
-    #TODO: build executable
+    # Build executable
+    msvc_tools_dir = os.getenv("VS100COMNTOOLS")
+    if msvc_tools_dir is None:
+        raise RuntimeError("Visual Studio 10.0 not detected!")
+    devenv_path = msvc_tools_dir + "..\\IDE\\devenv.com"
+    rebuildCmd = [devenv_path, "src/mona.sln", "/project", "minimona", "/projectconfig", "Release", "/rebuild"]
+    returnCode = subprocess.call(rebuildCmd)
+    if returnCode != 0:
+        raise RuntimeError("build failed!")
 
     out_dir = "test-" + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     os.mkdir(out_dir)
