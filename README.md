@@ -22,8 +22,11 @@ evolve on my laptop's 650M:
 
 ![image](https://raw.githubusercontent.com/cdwfs/mona/master/lisa.gif)
 
-Change Log
+Development Log
 ----------
+ - **2014-06-23:** Work is coming along on the GUI front. I have all the relevant components (Qt5, CUDA, and OpenGL) playing
+   nicely with each other in a testbed; all that remains is to hook up the actual EvoLisa logic. To that end, I've extracted
+   all the relevant code into a single module that can be trivially shared between the command-line and GUI projects.
  - **2014-06-04:** I took another detour into even more boring work, and started putting together a GUI for the program.
    I really, *really* do not enjoy GUI programming, which means I'm strongly motivated to finish this part quickly and get
    back to optimizations.
