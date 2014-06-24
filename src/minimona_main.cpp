@@ -86,17 +86,7 @@ int main(int argc, char *argv[])
 	const char *outImageFileName  = kEvoOutputFileDefault;
 	const char *outStatsFileName  = nullptr;
 	const char *outTempDirName    = nullptr;
-	PsoConstants constants = {};
-	constants.iterationCount      = kEvoIterationCountDefault;
-	constants.alphaLimit          = kEvoAlphaLimitDefault;
-	constants.checkLimit          = kEvoCheckLimitDefault;
-	constants.outputScale         = kEvoOutputScaleDefault;
-	constants.psoParticleCount    = kEvoPsoParticleCountDefault;
-	constants.psoIterationCount   = kEvoPsoIterationCountDefault;
-	constants.maxTriangleCount    = kEvoMaxTriangleCountDefault;
-	constants.psoNeighborhoodSize = kEvoPsoNeighborhoodSizeDefault;
-	constants.psoSpringConstant   = kEvoPsoSpringConstantDefault;
-	constants.psoDampeningFactor  = kEvoPsoDampeningFactorDefault;
+	PsoConstants constants;
 	if (argc < 2)
 	{
 		usage();

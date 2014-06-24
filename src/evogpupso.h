@@ -18,8 +18,22 @@
 #define kEvoBlockDim 16   // block width/height
 #define kEvoNumFloatsPerTriangle 9
 
-typedef struct PsoConstants
+class PsoConstants
 {
+public:
+	PsoConstants() : iterationCount(kEvoIterationCountDefault)
+		, alphaLimit(kEvoAlphaLimitDefault)
+		, checkLimit(kEvoCheckLimitDefault)
+		, outputScale(kEvoOutputScaleDefault)
+		, psoParticleCount(kEvoPsoParticleCountDefault)
+		, psoIterationCount(kEvoPsoIterationCountDefault)
+		, maxTriangleCount(kEvoMaxTriangleCountDefault)
+		, psoNeighborhoodSize(kEvoPsoNeighborhoodSizeDefault)
+		, psoSpringConstant(kEvoPsoSpringConstantDefault)
+		, psoDampeningFactor(kEvoPsoDampeningFactorDefault)
+	{
+	}
+
 	int32_t iterationCount;
 	float   alphaLimit;
 	int32_t checkLimit;
@@ -30,7 +44,7 @@ typedef struct PsoConstants
 	int32_t psoNeighborhoodSize;
 	float   psoSpringConstant;
 	float   psoDampeningFactor;
-} PsoConstants;
+};
 
 //triangle class. stores color/alpha values, as well as coordinates of vertices
 struct triangle {
