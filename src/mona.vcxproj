@@ -155,6 +155,7 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="evogpupso.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="GeneratedFiles\ui_mona.h" />
     <ClInclude Include="gl_core_3_3.h" />
@@ -185,6 +186,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\make_dist.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="evogpupso.cu">
+      <Runtime Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">MD</Runtime>
+      <Runtime Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">MDd</Runtime>
+    </CudaCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
