@@ -184,6 +184,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\make_dist.py" />
+    <None Include="lisa.jpg" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="evogpupso.cu">

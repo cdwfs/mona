@@ -1,4 +1,5 @@
 <RCC>
-    <qresource prefix="mona">
-    </qresource>
+  <qresource prefix="mona">
+    <file>lisa.jpg</file>
+  </qresource>
 </RCC>

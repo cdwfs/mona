@@ -125,6 +125,9 @@
      <property name="text">
       <string/>
      </property>
+     <property name="pixmap">
+      <pixmap resource="mona.qrc">:/mona/lisa.jpg</pixmap>
+     </property>
      <property name="scaledContents">
       <bool>true</bool>
      </property>

@@ -23,5 +23,6 @@ protected:
 	PsoConstants *m_psoConstants;
 	PsoContext *m_psoContext;
 private:
+	void initPso(int32_t imgWidth, int32_t imgHeight, const uint32_t *refPixels);
 	Ui::monaWindow ui;
 };

@@ -44,7 +44,10 @@ mona::mona(QWidget *parent)
 	ui.verticalLayout->addWidget(m_glWidget);
 
 	m_psoConstants = new PsoConstants;
+	// Initialize PSO context with the default reference image
 	m_psoContext = new PsoContext;
+	QImage defaultRefImage(":/mona/lisa.jpg");
+	initPso(defaultRefImage.width(), defaultRefImage.height(), (const uint32_t*)defaultRefImage.bits());
 }
 
 mona::~mona()
@@ -77,16 +80,9 @@ void mona::loadRefImage(void)
 	}
 	if (success)
 	{
-		// Convert to F32x4, as expected by the CUDA code.
-		float4 *h_originalPixels = (float4*)malloc(refImageWidth*refImageHeight*sizeof(float4));
-		for(int32_t iPixel=0; iPixel<refImageWidth*refImageHeight; ++iPixel)
-		{
-			h_originalPixels[iPixel].x = (float)((refImagePixels[iPixel] >>  0) & 0xFF) / 255.0f;
-			h_originalPixels[iPixel].y = (float)((refImagePixels[iPixel] >>  8) & 0xFF) / 255.0f;
-			h_originalPixels[iPixel].z = (float)((refImagePixels[iPixel] >> 16) & 0xFF) / 255.0f;
-			h_originalPixels[iPixel].w = (float)((refImagePixels[iPixel] >> 24) & 0xFF) / 255.0f;
-		}
-		m_psoContext->init(refImageWidth, refImageHeight, h_originalPixels, *m_psoConstants);
+		delete m_psoContext;
+		m_psoContext = new PsoContext;
+		initPso(refImageWidth, refImageHeight, refImagePixels);
 
 		// TODO: resize label to match image aspect ratio. Need to center it within the frame, though.
 		// For now, we just stretch to square.
@@ -100,7 +96,6 @@ void mona::loadRefImage(void)
 
 		// Original pixels are no longer needed in host memory
 		stbi_image_free(const_cast<uint32_t*>(refImagePixels));
-		free(h_originalPixels);
 	}
 
 	if (!success)
@@ -114,4 +109,19 @@ void mona::loadRefImage(void)
 		msgBox.setDefaultButton(QMessageBox::Ok);
 		msgBox.exec();
 	}
+}
+
+void mona::initPso(const int32_t refImageWidth, const int32_t refImageHeight, const uint32_t *refImagePixels)
+{
+	// Convert to F32x4, as expected by the CUDA code.
+	float4 *h_originalPixels = (float4*)malloc(refImageWidth*refImageHeight*sizeof(float4));
+	for(int32_t iPixel=0; iPixel<refImageWidth*refImageHeight; ++iPixel)
+	{
+		h_originalPixels[iPixel].x = (float)((refImagePixels[iPixel] >>  0) & 0xFF) / 255.0f;
+		h_originalPixels[iPixel].y = (float)((refImagePixels[iPixel] >>  8) & 0xFF) / 255.0f;
+		h_originalPixels[iPixel].z = (float)((refImagePixels[iPixel] >> 16) & 0xFF) / 255.0f;
+		h_originalPixels[iPixel].w = (float)((refImagePixels[iPixel] >> 24) & 0xFF) / 255.0f;
+	}
+	m_psoContext->init(refImageWidth, refImageHeight, h_originalPixels, *m_psoConstants);
+	free(h_originalPixels);
 }
