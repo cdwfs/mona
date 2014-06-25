@@ -383,10 +383,11 @@ __global__ void render(float4 * im,
 			im[g].z = 0.0f;
 		}
 	}
+	__syncthreads();
 	// render all triangles
 	for(int k = 0; k < dkEvoMaxTriangleCount; k++)
 		addtriangle(im, &curr[k], 1, (float)imgWidth, (float)imgHeight, imgPitch);
-
+	__syncthreads();
 	// score the image
 	float localsum = 0.0f;
 	for(int yy = threadIdx.y; yy < imgHeight; yy+=kEvoBlockDim) {
@@ -489,6 +490,7 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, float imgW
 
 // similar to render, but for output. Also not worth looking at.
 __global__ void renderproof(float4 * im, triangle * curr, int imgWidth, int imgHeight, int imgPitch) {
+	// clear image
 	for(int y = threadIdx.y; y < imgHeight; y += kEvoBlockDim) {
 		int g = y * imgPitch + threadIdx.x;
 		for (int x = threadIdx.x; x < imgWidth; x += kEvoBlockDim) {
@@ -499,9 +501,10 @@ __global__ void renderproof(float4 * im, triangle * curr, int imgWidth, int imgH
 			g += kEvoBlockDim;
 		}
 	}
+	__syncthreads();
 	for(int k = 0; k < dkEvoMaxTriangleCount; k++)
 		addtriangleproof(im, &curr[k], (float)imgWidth, (float)imgHeight, imgPitch);
-
+	__syncthreads();
 	for(int yy = threadIdx.y; yy < imgHeight; yy+=kEvoBlockDim) {
 		int g = yy * imgPitch + threadIdx.x;
 		for(int xx = threadIdx.x; xx < imgWidth; xx += kEvoBlockDim) {
