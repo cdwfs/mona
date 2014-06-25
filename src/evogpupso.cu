@@ -559,7 +559,7 @@ PsoContext::PsoContext(void)
 	m_currentIteration = 0;
 	m_imgWidth = 0;
 	m_imgHeight = 0;
-	m_originalPixelsPitch = 0;
+	m_currentPixelsPitch = 0;
 	md_originalPixels = nullptr;
 	md_currentPixels = nullptr;
 	mh_scaledOutputPixels = nullptr;
@@ -595,7 +595,7 @@ PsoContext::PsoContext(void)
 }
 PsoContext::~PsoContext(void)
 {
-	CUDA_CHECK( cudaFree(md_originalPixels) );
+	CUDA_CHECK( cudaFreeArray(md_originalPixels) );
 	CUDA_CHECK( cudaFree(md_currentPixels) );
 	free(mh_scaledOutputPixels);
 	CUDA_CHECK( cudaFree(md_scaledOutputPixels) );
@@ -635,17 +635,15 @@ int PsoContext::init(const int imgWidth, const int imgHeight, const float4 *h_or
 
 	// Upload original pixels to device memory
 	const size_t srcPitch = (size_t)imgWidth * sizeof(float4);
-	m_originalPixelsPitch = 0;
-	CUDA_CHECK( cudaMallocPitch(&md_originalPixels, &m_originalPixelsPitch,                   srcPitch,           imgHeight) );
-	CUDA_CHECK( cudaMemcpy2D(    md_originalPixels,  m_originalPixelsPitch, h_originalPixels, srcPitch, srcPitch, imgHeight, cudaMemcpyHostToDevice) );
+	m_refChannelDesc = cudaCreateChannelDesc<float4>();
+	CUDA_CHECK( cudaMallocArray(&md_originalPixels, &m_refChannelDesc, imgWidth, imgHeight, cudaArrayDefault) );
+	CUDA_CHECK( cudaMemcpy2DToArray(md_originalPixels, 0,0, h_originalPixels, srcPitch, srcPitch, imgHeight, cudaMemcpyHostToDevice) );
 
 	// Retrieve texture references for reference image and current candidate image
 	CUDA_CHECK( cudaGetTextureReference(&m_refImg, &refimg) );
 	CUDA_CHECK( cudaGetTextureReference(&m_currImg, &currimg) );
 	// Bind reference image texture to original pixels
-	m_channelDesc = cudaCreateChannelDesc<float4>();
-	size_t textureOffset = 0; // unused
-	CUDA_CHECK( cudaBindTexture2D(&textureOffset, m_refImg, md_originalPixels, &m_channelDesc, imgWidth, imgHeight, m_originalPixelsPitch) );
+	CUDA_CHECK( cudaBindTextureToArray(m_refImg, md_originalPixels, &m_refChannelDesc) );
 
 	// Create array of solution triangles
 	mh_currentTriangles = (triangle*)malloc(constants.maxTriangleCount*sizeof(triangle));
@@ -661,12 +659,14 @@ int PsoContext::init(const int imgWidth, const int imgHeight, const float4 *h_or
 
 	// Rendered solution on the GPU (and scaled-up version for final output)
 	md_currentPixels = nullptr;
-	CUDA_CHECK( cudaMallocPitch(&md_currentPixels, &m_originalPixelsPitch,    srcPitch, imgHeight) );
-	CUDA_CHECK( cudaMemset2D(    md_currentPixels,  m_originalPixelsPitch, 0, srcPitch, imgHeight) );
+	m_currentPixelsPitch = 0;
+	m_currChannelDesc = cudaCreateChannelDesc<float4>();
+	CUDA_CHECK( cudaMallocPitch(&md_currentPixels, &m_currentPixelsPitch,    imgWidth*sizeof(float4), imgHeight) );
+	CUDA_CHECK( cudaMemset2D(    md_currentPixels,  m_currentPixelsPitch, 0, imgWidth*sizeof(float4), imgHeight) );
 	md_scaledOutputPixels = nullptr;
 	m_scaledPixelsPitch = 0;
-	CUDA_CHECK( cudaMallocPitch(&md_scaledOutputPixels, &m_scaledPixelsPitch,    constants.outputScale*srcPitch, constants.outputScale*imgHeight) );
-	CUDA_CHECK( cudaMemset2D(    md_scaledOutputPixels,  m_scaledPixelsPitch, 0, constants.outputScale*srcPitch, constants.outputScale*imgHeight) );
+	CUDA_CHECK( cudaMallocPitch(&md_scaledOutputPixels, &m_scaledPixelsPitch,    constants.outputScale*imgWidth*sizeof(float4), constants.outputScale*imgHeight) );
+	CUDA_CHECK( cudaMemset2D(    md_scaledOutputPixels,  m_scaledPixelsPitch, 0, constants.outputScale*imgWidth*sizeof(float4), constants.outputScale*imgHeight) );
 	mh_scaledOutputPixels   =   (float4*)malloc(constants.outputScale*imgWidth*constants.outputScale*imgHeight*sizeof(float4));
 	mh_scaledOutputRgba8888 = (uint32_t*)malloc(constants.outputScale*imgWidth*constants.outputScale*imgHeight*sizeof(uint32_t));
 
@@ -724,7 +724,7 @@ void PsoContext::iterate(void)
 	// Render initial solution
 	launchRender();
 	size_t textureOffset = 0; // unused
-	CUDA_CHECK( cudaBindTexture2D(&textureOffset, m_currImg, md_currentPixels, &m_channelDesc, m_imgWidth, m_imgHeight, m_originalPixelsPitch) );
+	CUDA_CHECK( cudaBindTexture2D(&textureOffset, m_currImg, md_currentPixels, &m_currChannelDesc, m_imgWidth, m_imgHeight, m_currentPixelsPitch) );
 	CUDA_CHECK( cudaMemcpy(&m_currentScore, md_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 
 	// check that this isn't a huge regression, revert and pick new K if so
@@ -745,7 +745,7 @@ void PsoContext::iterate(void)
 	}
 
 	// texturize current solution
-	CUDA_CHECK( cudaBindTexture2D(&textureOffset, m_currImg, md_currentPixels, &m_channelDesc, m_imgWidth, m_imgHeight, m_originalPixelsPitch) );
+	CUDA_CHECK( cudaBindTexture2D(&textureOffset, m_currImg, md_currentPixels, &m_currChannelDesc, m_imgWidth, m_imgHeight, m_currentPixelsPitch) );
 
 	// create random data for this PSO iter, and send to device
 	for(int32_t iParticle=0; iParticle<m_constants.psoParticleCount; ++iParticle)
@@ -854,7 +854,7 @@ void PsoContext::launchRender(void)
 	dim3 gridDim(1,1);
 	dim3 blockDim(kEvoBlockDim, kEvoBlockDim);
 	render<<<gridDim, blockDim>>>(md_currentPixels, md_currentTriangles, md_currentTriangleIndex, md_currentScore,
-		m_imgWidth, m_imgHeight, m_originalPixelsPitch/sizeof(float4));
+		m_imgWidth, m_imgHeight, m_currentPixelsPitch/sizeof(float4));
 	CUDA_CHECK( cudaGetLastError() );
 }
 
