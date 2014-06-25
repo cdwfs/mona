@@ -84,18 +84,17 @@ private:
 	int32_t m_currentIteration; ///< Current PSO iteration.
 	int32_t m_imgWidth; ///< Width of reference image, in pixels.
 	int32_t m_imgHeight; ///< Height of reference image, in pixels.
-	size_t m_currentPixelsPitch; ///< Pitch of md_currentPixels, in bytes.
 
 	cudaArray_t md_originalPixels; ///< Original reference pixels. [device memory]
-	float4 *md_currentPixels; ///< Current candidate image pixels. Unscaled; same dimensions as original pixels. [device memory]
+	cudaArray_t md_currentPixels; ///< Current candidate image pixels. Unscaled; same dimensions as original pixels. [device memory]
 	float4 *mh_scaledOutputPixels; ///< Used to render final scaled output pixels. [host memory]
-	float4 *md_scaledOutputPixels; ///< Used to render final scaled output pixels. [device memory]
+	cudaArray_t md_scaledOutputPixels; ///< Used to render final scaled output pixels. [device memory]
 	uint32_t *mh_scaledOutputRgba8888; ///< Final scaled output pixels in RGBA8888 format, ready to write to disk. [host memory]
-	size_t m_scaledPixelsPitch; ///< Pitch of md_scaledOutputPixels, in bytes.
 	const textureReference *m_refImg; ///< Reference to reference pixels as a CUDA texture.
-	const textureReference *m_currImg; ///< Refernce to current candidate pixels as a CUDA texture.
+	const surfaceReference *m_currImg; ///< Reference to current candidate pixels as a CUDA texture.
+	const surfaceReference *m_scaledImg; ///< Reference to scaled output pixels as a CUDA texture.
 	cudaChannelFormatDesc m_refChannelDesc; ///< channel format for m_refImg.
-	cudaChannelFormatDesc m_currChannelDesc; ///< channel format for m_currImg.
+	cudaChannelFormatDesc m_currChannelDesc; ///< channel format for m_currImg (and m_scaledImg)
 	triangle *mh_currentTriangles; ///< Current candidate triangles. [host memory]
 	triangle *md_currentTriangles; ///< Current candidate triangles. [device memory]
 	triangle *mh_bestTriangles; ///< Best candidate triangles found so far. [host memory]

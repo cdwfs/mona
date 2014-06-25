@@ -28,8 +28,9 @@ inline __host__ __device__ float4 operator-(float4 a, float4 b)
 {
     return make_float4(a.x - b.x, a.y - b.y, a.z - b.z,  a.w - b.w);
 }
-     
-texture<float4, cudaTextureType2D, cudaReadModeElementType> currimg;  // current image rendered in triangles
+
+surface<void, cudaSurfaceType2D> currimg; // current image rendered in triangles. element type is float4
+surface<void, cudaSurfaceType2D> scaledimg; // current image rendered in triangles. element type is float4
 texture<float4, cudaTextureType2D, cudaReadModeElementType> refimg; // original reference image
 
 __constant__ float dkEvoAlphaLimit;
@@ -42,7 +43,7 @@ __constant__ float dkEvoPsoSpringConstant;
 __constant__ float dkEvoPsoDampeningFactor;
 
 // adds a triangle to the working image, or subtracts it if add==0
-inline   __device__  void addtriangle(float4 * img, triangle * tri, bool add, float imgWidth, float imgHeight, int imgPitch)
+inline   __device__  void addtriangle(triangle * tri, bool add, float imgWidth, float imgHeight)
 {
 	//intializes shared memory
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
@@ -111,12 +112,13 @@ inline   __device__  void addtriangle(float4 * img, triangle * tri, bool add, fl
 	for(int yy = h1 + threadIdx.y; yy < h2; yy += kEvoBlockDim) {
 		int xStart = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y1), 0.0f, imgWidth);
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y1), 0.0f, imgWidth);
-		int pixelIndex = imgPitch * yy + xStart;
+		float4 pixel;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			img[pixelIndex].x += triColor.x;
-			img[pixelIndex].y += triColor.y;
-			img[pixelIndex].z += triColor.z;
-			pixelIndex += kEvoBlockDim;
+			surf2Dread(&pixel, currimg, xx*sizeof(float4), yy);
+			pixel.x += triColor.x;
+			pixel.y += triColor.y;
+			pixel.z += triColor.z;
+			surf2Dwrite(pixel, currimg, xx*sizeof(float4), yy);
 		}
 
 	}
@@ -135,12 +137,13 @@ inline   __device__  void addtriangle(float4 * img, triangle * tri, bool add, fl
 	for(int yy = h2 + threadIdx.y; yy < h3; yy += kEvoBlockDim) {
 		int xStart = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
-		int pixelIndex = imgPitch * yy + xStart;
+		float4 pixel;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			img[pixelIndex].x += triColor.x;
-			img[pixelIndex].y += triColor.y;
-			img[pixelIndex].z += triColor.z;
-			pixelIndex += kEvoBlockDim;
+			surf2Dread(&pixel, currimg, xx*sizeof(float4), yy);
+			pixel.x += triColor.x;
+			pixel.y += triColor.y;
+			pixel.z += triColor.z;
+			surf2Dwrite(pixel, currimg, xx*sizeof(float4), yy);
 		}
 	}
 }
@@ -208,11 +211,12 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 	for(int yy = threadIdx.y+h1; yy < h2; yy+=kEvoBlockDim) {
 		int xStart = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y1), 0.0f, imgWidth);
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y1), 0.0f, imgWidth);
+		float4 currentPixel, refPixel;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
 #if 0
 			// This version is fewer ALU ops, but more registers
-			const float4 currentPixel = tex2D(currimg, xx, yy);
-			const float4 refPixel = tex2D(refimg, xx, yy);
+			currentPixel = tex2D(currimg, xx, yy);
+			refPixel     = tex2D(refimg, xx, yy);
 			float pixelScoreR = fmaf(-2.0f, refPixel.x, triColor.x);
 			float pixelScoreG = fmaf(-2.0f, refPixel.y, triColor.y);
 			float pixelScoreB = fmaf(-2.0f, refPixel.z, triColor.z);
@@ -223,7 +227,9 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 			localsum          = fmaf(pixelScoreG, triColor.y, localsum);
 			localsum          = fmaf(pixelScoreB, triColor.z, localsum);
 #else
-			float4 pixelDiff = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
+			surf2Dread(&currentPixel, currimg, xx*sizeof(float4), yy);
+			refPixel = tex2D(refimg, xx, yy);
+			float4 pixelDiff = currentPixel - refPixel;
 			localsum -= dot3(pixelDiff, pixelDiff);
 			pixelDiff.x += triColor.x; pixelDiff.y += triColor.y; pixelDiff.z += triColor.z;
 			localsum += dot3(pixelDiff, pixelDiff);
@@ -245,11 +251,12 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 	for(int yy = threadIdx.y+h2; yy < h3; yy+=kEvoBlockDim) {
 		int xStart = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
+		float4 currentPixel, refPixel;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
 #if 0
 			// This version is fewer ALU ops, but more registers
-			const float4 currentPixel = tex2D(currimg, xx, yy);
-			const float4 refPixel = tex2D(refimg, xx, yy);
+			currentPixel = tex2D(currimg, xx, yy);
+			refPixel     = tex2D(refimg, xx, yy);
 			float pixelScoreR = fmaf(-2.0f, refPixel.x, triColor.x);
 			float pixelScoreG = fmaf(-2.0f, refPixel.y, triColor.y);
 			float pixelScoreB = fmaf(-2.0f, refPixel.z, triColor.z);
@@ -260,7 +267,9 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 			localsum          = fmaf(pixelScoreG, triColor.y, localsum);
 			localsum          = fmaf(pixelScoreB, triColor.z, localsum);
 #else
-			float4 pixelDiff = tex2D(currimg, xx, yy) - tex2D(refimg, xx, yy);
+			surf2Dread(&currentPixel, currimg, xx*sizeof(float4), yy);
+			refPixel = tex2D(refimg, xx, yy);
+			float4 pixelDiff = currentPixel - refPixel;
 			localsum -= dot3(pixelDiff, pixelDiff);
 			pixelDiff.x += triColor.x; pixelDiff.y += triColor.y; pixelDiff.z += triColor.z;
 			localsum += dot3(pixelDiff, pixelDiff);
@@ -367,50 +376,48 @@ __global__ void run(triangle * curr,   //D (triangles)
 }
 
 // renders and scores an image
-__global__ void render(float4 * im,
-					   triangle * curr,
+__global__ void render(triangle * curr,
 					   int * K,
 					   float * score,
 					   int imgWidth,
-					   int imgHeight,
-					   int imgPitch) {
+					   int imgHeight) {
 	// clear image
-	for(int y = threadIdx.y; y < imgHeight; y += kEvoBlockDim) {
-		for(int i = threadIdx.x; i < imgWidth; i += kEvoBlockDim) {
-			int g = y * imgPitch + i;
-			im[g].x = 0.0f;
-			im[g].y = 0.0f;
-			im[g].z = 0.0f;
+	const float4 zero4 = make_float4(0,0,0,0);
+	for(int yy = threadIdx.y; yy < imgHeight; yy += kEvoBlockDim) {
+		for(int xx = threadIdx.x; xx < imgWidth; xx += kEvoBlockDim) {
+			surf2Dwrite(zero4, currimg, xx*sizeof(float4), yy);
 		}
 	}
 	__syncthreads();
 	// render all triangles
 	for(int k = 0; k < dkEvoMaxTriangleCount; k++)
-		addtriangle(im, &curr[k], 1, (float)imgWidth, (float)imgHeight, imgPitch);
+		addtriangle(&curr[k], 1, (float)imgWidth, (float)imgHeight);
 	__syncthreads();
 	// score the image
 	float localsum = 0.0f;
 	for(int yy = threadIdx.y; yy < imgHeight; yy+=kEvoBlockDim) {
-		int g = yy*imgPitch + threadIdx.x;
+		float4 currentPixel;
 		for(int xx = threadIdx.x; xx < imgWidth; xx += kEvoBlockDim) {
 			float4 o = tex2D(refimg, xx, yy);
-			o.x -= im[g].x; o.y -= im[g].y; o.z -= im[g].z;
+			surf2Dread(&currentPixel, currimg, xx*sizeof(float4), yy);
+			o.x -= currentPixel.x;
+			o.y -= currentPixel.y;
+			o.z -= currentPixel.z;
 			localsum += dot3(o, o);
-			g += kEvoBlockDim;
 		}
 	}
 	atomicAdd(score, localsum);
 
 	// remove triangles we are modifying
 	__syncthreads();
-	addtriangle(im, &curr[*K], 0, (float)imgWidth, (float)imgHeight, imgPitch);
+	addtriangle(&curr[*K], 0, (float)imgWidth, (float)imgHeight);
 }
 
 
 
 
 // similar to addtriangle function, but for output. Not worth looking at...
-inline   __device__  void addtriangleproof(float4 * im, triangle * T, float imgWidth, float imgHeight, int imgPitch)
+inline   __device__  void addtriangleproof(triangle * T, float imgWidth, float imgHeight)
 {
 	//sort points by y value, yes, this is retarded
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
@@ -457,12 +464,13 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, float imgW
 	for(int yy = h1 + threadIdx.y; yy < h2; yy += kEvoBlockDim) {
 		int xStart = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y1), 0.0f, imgWidth);
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y1), 0.0f, imgWidth);
-		int g = imgPitch * yy + xStart;
+		float4 currentPixel;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			im[g].x += dkEvoAlphaLimit * T->r;
-			im[g].y += dkEvoAlphaLimit * T->g;
-			im[g].z += dkEvoAlphaLimit * T->b;
-			g += kEvoBlockDim;
+			surf2Dread(&currentPixel, scaledimg, xx*sizeof(float4), yy);
+			currentPixel.x += dkEvoAlphaLimit * T->r;
+			currentPixel.y += dkEvoAlphaLimit * T->g;
+			currentPixel.z += dkEvoAlphaLimit * T->b;
+			surf2Dwrite(currentPixel, scaledimg, xx*sizeof(float4), yy);
 		}
 
 	}
@@ -478,41 +486,41 @@ inline   __device__  void addtriangleproof(float4 * im, triangle * T, float imgW
 	for(int yy = h2 + threadIdx.y; yy < h3; yy += kEvoBlockDim) {
 		int xStart = threadIdx.x + clip(xs + m1 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
 		int xMax   =               clip(xt + m2 * (yy - imgHeight * y2 + 1), 0.0f, imgWidth);
-		int g = imgPitch * yy + xStart;
+		float4 currentPixel;
 		for(int xx = xStart; xx < xMax; xx += kEvoBlockDim) {
-			im[g].x += dkEvoAlphaLimit * T->r;
-			im[g].y += dkEvoAlphaLimit * T->g;
-			im[g].z += dkEvoAlphaLimit * T->b;
-			g += kEvoBlockDim;
+			surf2Dread(&currentPixel, scaledimg, xx*sizeof(float4), yy);
+			currentPixel.x += dkEvoAlphaLimit * T->r;
+			currentPixel.y += dkEvoAlphaLimit * T->g;
+			currentPixel.z += dkEvoAlphaLimit * T->b;
+			surf2Dwrite(currentPixel, scaledimg, xx*sizeof(float4), yy);
 		}
 	}
 }
 
 // similar to render, but for output. Also not worth looking at.
-__global__ void renderproof(float4 * im, triangle * curr, int imgWidth, int imgHeight, int imgPitch) {
+__global__ void renderproof(triangle * curr, int imgWidth, int imgHeight) {
 	// clear image
-	for(int y = threadIdx.y; y < imgHeight; y += kEvoBlockDim) {
-		int g = y * imgPitch + threadIdx.x;
-		for (int x = threadIdx.x; x < imgWidth; x += kEvoBlockDim) {
-			im[g].x = 0.0f;
-			im[g].y = 0.0f;
-			im[g].z = 0.0f;
-			im[g].w = 1.0f;
-			g += kEvoBlockDim;
+	for(int yy = threadIdx.y; yy < imgHeight; yy += kEvoBlockDim) {
+		const float4 zero4 = make_float4(0,0,0,0);
+		for (int xx = threadIdx.x; xx < imgWidth; xx += kEvoBlockDim) {
+			surf2Dwrite(zero4, scaledimg, xx*sizeof(float4), yy);
 		}
 	}
 	__syncthreads();
+	// Add triangles
 	for(int k = 0; k < dkEvoMaxTriangleCount; k++)
-		addtriangleproof(im, &curr[k], (float)imgWidth, (float)imgHeight, imgPitch);
+		addtriangleproof(&curr[k], (float)imgWidth, (float)imgHeight);
 	__syncthreads();
+	// Clamp output to [0..1]
 	for(int yy = threadIdx.y; yy < imgHeight; yy+=kEvoBlockDim) {
-		int g = yy * imgPitch + threadIdx.x;
+		float4 currentPixel;
 		for(int xx = threadIdx.x; xx < imgWidth; xx += kEvoBlockDim) {
-			im[g].x = clip(im[g].x,0.0f,1.0f);
-			im[g].y = clip(im[g].y,0.0f,1.0f);
-			im[g].z = clip(im[g].z,0.0f,1.0f);
-			im[g].w = 1.0;
-			g += kEvoBlockDim;
+			surf2Dread(&currentPixel, scaledimg, xx*sizeof(float4), yy);
+			currentPixel.x = clip(currentPixel.x, 0.0f, 1.0f);
+			currentPixel.y = clip(currentPixel.y, 0.0f, 1.0f);
+			currentPixel.z = clip(currentPixel.z, 0.0f, 1.0f);
+			currentPixel.w = 1.0;
+			surf2Dwrite(currentPixel, scaledimg, xx*sizeof(float4), yy);
 		}
 	}
 }
@@ -562,15 +570,14 @@ PsoContext::PsoContext(void)
 	m_currentIteration = 0;
 	m_imgWidth = 0;
 	m_imgHeight = 0;
-	m_currentPixelsPitch = 0;
 	md_originalPixels = nullptr;
 	md_currentPixels = nullptr;
 	mh_scaledOutputPixels = nullptr;
-	md_scaledOutputPixels = nullptr;
 	mh_scaledOutputRgba8888 = nullptr;
-	m_scaledPixelsPitch = 0;
+	md_scaledOutputPixels = nullptr;
 	m_refImg = nullptr;
 	m_currImg = nullptr;
+	m_scaledImg = nullptr;
 	mh_currentTriangles = nullptr;
 	md_currentTriangles = nullptr;
 	mh_bestTriangles = nullptr;
@@ -599,10 +606,10 @@ PsoContext::PsoContext(void)
 PsoContext::~PsoContext(void)
 {
 	CUDA_CHECK( cudaFreeArray(md_originalPixels) );
-	CUDA_CHECK( cudaFree(md_currentPixels) );
+	CUDA_CHECK( cudaFreeArray(md_currentPixels) );
 	free(mh_scaledOutputPixels);
-	CUDA_CHECK( cudaFree(md_scaledOutputPixels) );
 	free(mh_scaledOutputRgba8888);
+	CUDA_CHECK( cudaFreeArray(md_scaledOutputPixels) );
 	free(mh_currentTriangles);
 	CUDA_CHECK( cudaFree(md_currentTriangles) );
 	free(mh_bestTriangles);
@@ -638,10 +645,8 @@ int PsoContext::init(const int imgWidth, const int imgHeight, const float4 *h_or
 	CUDA_CHECK( cudaMallocArray(&md_originalPixels, &m_refChannelDesc, imgWidth, imgHeight, cudaArrayDefault) );
 	CUDA_CHECK( cudaMemcpy2DToArray(md_originalPixels, 0,0, h_originalPixels, srcPitch, srcPitch, imgHeight, cudaMemcpyHostToDevice) );
 
-	// Retrieve texture references for reference image and current candidate image
-	CUDA_CHECK( cudaGetTextureReference(&m_refImg, &refimg) );
-	CUDA_CHECK( cudaGetTextureReference(&m_currImg, &currimg) );
 	// Bind reference image texture to original pixels
+	CUDA_CHECK( cudaGetTextureReference(&m_refImg, &refimg) );
 	CUDA_CHECK( cudaBindTextureToArray(m_refImg, md_originalPixels, &m_refChannelDesc) );
 
 	// Create array of solution triangles
@@ -658,18 +663,16 @@ int PsoContext::init(const int imgWidth, const int imgHeight, const float4 *h_or
 
 	// Rendered solution on the GPU
 	md_currentPixels = nullptr;
-	m_currentPixelsPitch = 0;
 	m_currChannelDesc = cudaCreateChannelDesc<float4>();
-	CUDA_CHECK( cudaMallocPitch(&md_currentPixels, &m_currentPixelsPitch,    imgWidth*sizeof(float4), imgHeight) );
-	CUDA_CHECK( cudaMemset2D(    md_currentPixels,  m_currentPixelsPitch, 0, imgWidth*sizeof(float4), imgHeight) );
-	size_t textureOffset = 0; // unused
-	CUDA_CHECK( cudaBindTexture2D(&textureOffset, m_currImg, md_currentPixels, &m_currChannelDesc, m_imgWidth, m_imgHeight, m_currentPixelsPitch) );
+	CUDA_CHECK( cudaMallocArray(&md_currentPixels, &m_currChannelDesc, imgWidth, imgHeight, cudaArraySurfaceLoadStore) );
+	CUDA_CHECK( cudaGetSurfaceReference(&m_currImg, &currimg) );
+	CUDA_CHECK( cudaBindSurfaceToArray(m_currImg, md_currentPixels, &m_currChannelDesc) );
 
 	// Scaled-up pixels for final output to image file
 	md_scaledOutputPixels = nullptr;
-	m_scaledPixelsPitch = 0;
-	CUDA_CHECK( cudaMallocPitch(&md_scaledOutputPixels, &m_scaledPixelsPitch,    constants.outputScale*imgWidth*sizeof(float4), constants.outputScale*imgHeight) );
-	CUDA_CHECK( cudaMemset2D(    md_scaledOutputPixels,  m_scaledPixelsPitch, 0, constants.outputScale*imgWidth*sizeof(float4), constants.outputScale*imgHeight) );
+	CUDA_CHECK( cudaMallocArray(&md_scaledOutputPixels, &m_currChannelDesc, constants.outputScale*imgWidth, constants.outputScale*imgHeight, cudaArraySurfaceLoadStore) );
+	CUDA_CHECK( cudaGetSurfaceReference(&m_scaledImg, &scaledimg) );
+	CUDA_CHECK( cudaBindSurfaceToArray(m_scaledImg, md_scaledOutputPixels, &m_currChannelDesc) );
 	mh_scaledOutputPixels   =   (float4*)malloc(constants.outputScale*imgWidth*constants.outputScale*imgHeight*sizeof(float4));
 	mh_scaledOutputRgba8888 = (uint32_t*)malloc(constants.outputScale*imgWidth*constants.outputScale*imgHeight*sizeof(uint32_t));
 
@@ -784,8 +787,9 @@ int PsoContext::renderToFile(const char *imageFileName)
 	const size_t srcPitch = (size_t)m_imgWidth * sizeof(float4);
 	CUDA_CHECK( cudaMemcpy(md_bestTriangles, md_currentTriangles, m_constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
 	launchRenderProof();
-	CUDA_CHECK( cudaMemcpy2D(mh_scaledOutputPixels, m_constants.outputScale*srcPitch, md_scaledOutputPixels,
-		m_scaledPixelsPitch, m_constants.outputScale*srcPitch, m_constants.outputScale*m_imgHeight, cudaMemcpyDeviceToHost) );
+
+	CUDA_CHECK( cudaMemcpy2DFromArray(mh_scaledOutputPixels, m_constants.outputScale*srcPitch, md_scaledOutputPixels,
+		0,0, m_constants.outputScale*srcPitch, m_constants.outputScale*m_imgHeight, cudaMemcpyDeviceToHost) );
 	// Convert to RGBA8888 for output
 	for(int32_t iPixel=0; iPixel<m_constants.outputScale*m_imgWidth * m_constants.outputScale*m_imgHeight; ++iPixel)
 	{
@@ -851,8 +855,7 @@ void PsoContext::launchRender(void)
 	CUDA_CHECK( cudaMemset(md_currentScore, 0, sizeof(float)) );
 	dim3 gridDim(1,1);
 	dim3 blockDim(kEvoBlockDim, kEvoBlockDim);
-	render<<<gridDim, blockDim>>>(md_currentPixels, md_currentTriangles, md_currentTriangleIndex, md_currentScore,
-		m_imgWidth, m_imgHeight, m_currentPixelsPitch/sizeof(float4));
+	render<<<gridDim, blockDim>>>(md_currentTriangles, md_currentTriangleIndex, md_currentScore, m_imgWidth, m_imgHeight);
 	CUDA_CHECK( cudaGetLastError() );
 }
 
@@ -860,8 +863,7 @@ void PsoContext::launchRenderProof(void)
 {
 	dim3 gridDim(1,1);
 	dim3 blockDim(kEvoBlockDim, kEvoBlockDim);
-	renderproof<<<gridDim, blockDim>>>(md_scaledOutputPixels, md_bestTriangles, m_constants.outputScale*m_imgWidth,
-		m_constants.outputScale*m_imgHeight, m_scaledPixelsPitch/sizeof(float4));
+	renderproof<<<gridDim, blockDim>>>(md_bestTriangles, m_constants.outputScale*m_imgWidth, m_constants.outputScale*m_imgHeight);
 	CUDA_CHECK( cudaGetLastError() );
 }
 
