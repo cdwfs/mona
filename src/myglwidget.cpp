@@ -119,7 +119,7 @@ void MyGLWidget::initializeGL(void)
 	CUDA_CHECK( cudaGLGetDevices(&glDeviceCount, &glDeviceId, 1, cudaGLDeviceListCurrentFrame) );
 	ZOMBOLITE_ASSERT(cudaDeviceId == glDeviceId, "No OpenGL/CUDA devices found");
 	cudaGraphicsResource *evoTexResource = NULL;
-	CUDA_CHECK( cudaGraphicsGLRegisterImage(&evoTexResource, m_evoTex, GL_TEXTURE_RECTANGLE, cudaGraphicsRegisterFlagsWriteDiscard) );
+	CUDA_CHECK( cudaGraphicsGLRegisterImage(&evoTexResource, m_evoTex, GL_TEXTURE_RECTANGLE, cudaGraphicsRegisterFlagsSurfaceLoadStore) );
 
 	CUDA_CHECK( cudaGraphicsMapResources(1, &evoTexResource) );
 	cudaArray *evoTexArray = NULL;
