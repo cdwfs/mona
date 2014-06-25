@@ -603,16 +603,12 @@ PsoContext::~PsoContext(void)
 	free(mh_scaledOutputPixels);
 	CUDA_CHECK( cudaFree(md_scaledOutputPixels) );
 	free(mh_scaledOutputRgba8888);
-	m_refImg = nullptr;
-	m_currImg = nullptr;
 	free(mh_currentTriangles);
 	CUDA_CHECK( cudaFree(md_currentTriangles) );
 	free(mh_bestTriangles);
 	CUDA_CHECK( cudaFree(md_bestTriangles) );
 	CUDA_CHECK( cudaFree(md_currentTriangleIndex) );
-	m_currentScore = 0;
 	CUDA_CHECK( cudaFree( md_currentScore ) );
-	m_bestScore = 0;
 	free(mh_psoParticlesPos);
 	CUDA_CHECK( cudaFree(md_psoParticlesPos) );
 	free(mh_psoParticlesVel);
