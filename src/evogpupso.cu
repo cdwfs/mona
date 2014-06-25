@@ -657,12 +657,16 @@ int PsoContext::init(const int imgWidth, const int imgHeight, const float4 *h_or
 	CUDA_CHECK( cudaMalloc(&md_bestTriangles, constants.maxTriangleCount*sizeof(triangle)) );
 	CUDA_CHECK( cudaMemcpy( md_bestTriangles, md_currentTriangles, constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
 
-	// Rendered solution on the GPU (and scaled-up version for final output)
+	// Rendered solution on the GPU
 	md_currentPixels = nullptr;
 	m_currentPixelsPitch = 0;
 	m_currChannelDesc = cudaCreateChannelDesc<float4>();
 	CUDA_CHECK( cudaMallocPitch(&md_currentPixels, &m_currentPixelsPitch,    imgWidth*sizeof(float4), imgHeight) );
 	CUDA_CHECK( cudaMemset2D(    md_currentPixels,  m_currentPixelsPitch, 0, imgWidth*sizeof(float4), imgHeight) );
+	size_t textureOffset = 0; // unused
+	CUDA_CHECK( cudaBindTexture2D(&textureOffset, m_currImg, md_currentPixels, &m_currChannelDesc, m_imgWidth, m_imgHeight, m_currentPixelsPitch) );
+
+	// Scaled-up pixels for final output to image file
 	md_scaledOutputPixels = nullptr;
 	m_scaledPixelsPitch = 0;
 	CUDA_CHECK( cudaMallocPitch(&md_scaledOutputPixels, &m_scaledPixelsPitch,    constants.outputScale*imgWidth*sizeof(float4), constants.outputScale*imgHeight) );
@@ -723,8 +727,6 @@ void PsoContext::iterate(void)
 
 	// Render initial solution
 	launchRender();
-	size_t textureOffset = 0; // unused
-	CUDA_CHECK( cudaBindTexture2D(&textureOffset, m_currImg, md_currentPixels, &m_currChannelDesc, m_imgWidth, m_imgHeight, m_currentPixelsPitch) );
 	CUDA_CHECK( cudaMemcpy(&m_currentScore, md_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 
 	// check that this isn't a huge regression, revert and pick new K if so
@@ -743,9 +745,6 @@ void PsoContext::iterate(void)
 		// Update best known solution
 		memcpy(mh_bestTriangles, mh_currentTriangles, m_constants.maxTriangleCount*sizeof(triangle));
 	}
-
-	// texturize current solution
-	CUDA_CHECK( cudaBindTexture2D(&textureOffset, m_currImg, md_currentPixels, &m_currChannelDesc, m_imgWidth, m_imgHeight, m_currentPixelsPitch) );
 
 	// create random data for this PSO iter, and send to device
 	for(int32_t iParticle=0; iParticle<m_constants.psoParticleCount; ++iParticle)
