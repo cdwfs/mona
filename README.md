@@ -24,6 +24,12 @@ evolve on my laptop's 650M:
 
 Development Log
 ----------
+ - **2014-07-03:** Since textures shared between CUDA and OpenGL must be backed by [CUDA Arrays](http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#cuda-arrays),
+   I tried converting the PSO implementation to write to surface memory (CUDA's name of R/W textures) instead of raw device memory.
+   The bad news is that performance dropped by about 50%; the good news is that it turns out the texture I need to share with
+   OpenGL doesn't need to be generated nearly as often as I feared. So, I'll keep the intermediate rendering as pitched device
+   memory, and only use array/surface memory when necessary. I'm also working on moving the entire PSO iteration process to the GPU;
+   currently there's way too much pointless copying back and forth between host and device memory.
  - **2014-06-23:** Work is coming along on the GUI front. I have all the relevant components (Qt5, CUDA, and OpenGL) playing
    nicely with each other in a testbed; all that remains is to hook up the actual EvoLisa logic. To that end, I've extracted
    all the relevant code into a single module that can be trivially shared between the command-line and GUI projects.
