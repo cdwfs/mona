@@ -14,8 +14,8 @@
 typedef unsigned int uint;
 
 // poor man's random number generator
-#define my_rand() (r = r * 1103515245 + 12345, (((float) (r & 65535)) * .000015259f))
 // this is sketchy, but for purposes of PSO, acceptable (and fast!)
+#define my_randf() (r = r * 1103515245 + 12345, (((float) (r & 65535)) * .000015259f))
 
 #define max(a,b) (a > b ? a : b)
 #define min(a,b) (a > b ? b : a)
@@ -41,6 +41,72 @@ __constant__ int dkEvoMaxTriangleCount;
 __constant__ int dkEvoPsoNeighborhoodSize;
 __constant__ float dkEvoPsoSpringConstant;
 __constant__ float dkEvoPsoDampeningFactor;
+
+__global__ void cudaSrand(const uint seed, const uint stateCount, curandState_t *outStates)
+{
+	uint iState = blockDim.x*blockIdx.x + threadIdx.x;
+	while(iState < stateCount)
+	{
+		curand_init(seed, iState, 0, &outStates[iState]);
+		iState += blockDim.x * gridDim.x;
+	}
+}
+
+inline __device__ void randomizeTrianglePos(triangle *tri, curandState_t &state)
+{
+	tri->x1 = curand_uniform(&state);
+	tri->y1 = curand_uniform(&state);
+	tri->x2 = curand_uniform(&state);
+	tri->y2 = curand_uniform(&state);
+	tri->x3 = curand_uniform(&state);
+	tri->y3 = curand_uniform(&state);
+	tri->r  = curand_uniform(&state);
+	tri->g  = curand_uniform(&state);
+	tri->b  = curand_uniform(&state);
+}
+
+inline __device__ void randomizeTriangleVel(triangle *tri, curandState_t &state)
+{
+	tri->x1 = curand_uniform(&state) * 2.0f - 1.0f;
+	tri->y1 = curand_uniform(&state) * 2.0f - 1.0f;
+	tri->x2 = curand_uniform(&state) * 2.0f - 1.0f;
+	tri->y2 = curand_uniform(&state) * 2.0f - 1.0f;
+	tri->x3 = curand_uniform(&state) * 2.0f - 1.0f;
+	tri->y3 = curand_uniform(&state) * 2.0f - 1.0f;
+	tri->r  = curand_uniform(&state) * 2.0f - 1.0f;
+	tri->g  = curand_uniform(&state) * 2.0f - 1.0f;
+	tri->b  = curand_uniform(&state) * 2.0f - 1.0f;
+}
+
+__global__ void initPsoParticles(const uint particleCount, curandState_t *states,
+	triangle *positions,
+	triangle *velocities,
+	float *fits,
+	triangle *localBestPositions,
+	float *localBestFits,
+	triangle *nhoodBestPositions,
+	float *nhoodBestFits,
+	float *globalBestFit)
+{
+	if (threadIdx.x >= particleCount)
+	{
+		return;
+	}
+	curandState_t state = states[threadIdx.x];
+	randomizeTrianglePos(positions+threadIdx.x, state);
+	randomizeTriangleVel(velocities+threadIdx.x, state);
+	fits[threadIdx.x] = FLT_MAX;
+	randomizeTrianglePos(localBestPositions+threadIdx.x, state);
+	localBestFits[threadIdx.x] = FLT_MAX;
+	randomizeTrianglePos(nhoodBestPositions+threadIdx.x, state);
+	nhoodBestFits[threadIdx.x] = FLT_MAX;
+	states[threadIdx.x] = state;
+	if (threadIdx.x == 0)
+	{
+		*globalBestFit = FLT_MAX;
+	}
+}
+
 
 // adds a triangle to the working image, or subtracts it if add==0
 inline   __device__  void addtriangle(float4 * img, triangle * tri, bool add, float imgWidth, float imgHeight, int imgPitch)
@@ -302,19 +368,19 @@ __global__ void run(triangle * curr,   //D (triangles)
 
 		// integrate position
 		if(q > 0 && threadIdx.y==0 && threadIdx.x < kEvoNumFloatsPerTriangle) {
-			float vmax = .2f * my_rand() + 0.05f;
-			float vmin = -.2f * my_rand() - 0.05f;	
+			float vmax =  .2f * my_randf() + 0.05f;
+			float vmin = -.2f * my_randf() - 0.05f;
 			float * v = (((float *) &vel[blockIdx.x]) + threadIdx.x);
 			float * p = (((float *) &pos[blockIdx.x]) + threadIdx.x);
 			float * l = (((float *) &lbest[blockIdx.x]) + threadIdx.x);
 			float * n = (((float *) &nbest[blockIdx.x]) + threadIdx.x);
 			*v *= dkEvoPsoDampeningFactor;
-			*v += dkEvoPsoSpringConstant * my_rand() * (*n - *p);
-			*v += dkEvoPsoSpringConstant * my_rand() * (*l - *p);
+			*v += dkEvoPsoSpringConstant * my_randf() * (*n - *p);
+			*v += dkEvoPsoSpringConstant * my_randf() * (*l - *p);
 			*v = min( max(*v, vmin), vmax );
 			*p += *v;
-			if(fit[blockIdx.x] > 0 && my_rand() < 0.01f)
-				*p = my_rand();
+			if(fit[blockIdx.x] > 0 && my_randf() < 0.01f)
+				*p = my_randf();
 			if (threadIdx.x >= 6)
 			{
 				*p = clip(*p, 0.0f, 1.0f);
@@ -534,37 +600,6 @@ static inline float clamp(float x, float min, float max)
 	return (x<min) ? min : ( (x>max) ? max : x );
 }
 
-static inline float randf(void)
-{
-	return (float)( (float)rand() / (float)RAND_MAX );
-}
-
-static void randomizeTrianglePos(triangle *tri)
-{
-	tri->x1 = randf();
-	tri->y1 = randf();
-	tri->x2 = randf();
-	tri->y2 = randf();
-	tri->x3 = randf();
-	tri->y3 = randf();
-	tri->r = randf();
-	tri->g = randf();
-	tri->b = randf();
-}
-
-static void randomizeTriangleVel(triangle *tri)
-{
-	tri->x1 = randf() * 2.0f - 1.0f;
-	tri->y1 = randf() * 2.0f - 1.0f;
-	tri->x2 = randf() * 2.0f - 1.0f;
-	tri->y2 = randf() * 2.0f - 1.0f;
-	tri->x3 = randf() * 2.0f - 1.0f;
-	tri->y3 = randf() * 2.0f - 1.0f;
-	tri->r = randf() * 2.0f - 1.0f;
-	tri->g = randf() * 2.0f - 1.0f;
-	tri->b = randf() * 2.0f - 1.0f;
-}
-
 PsoContext::PsoContext(void)
 {
 	m_currentIteration = 0;
@@ -587,21 +622,14 @@ PsoContext::PsoContext(void)
 	m_currentScore = 0;
 	md_currentScore = nullptr;
 	m_bestScore = 0;
-	mh_psoParticlesPos = nullptr;
+	md_psoRandStates = nullptr;
 	md_psoParticlesPos = nullptr;
-	mh_psoParticlesVel = nullptr;
 	md_psoParticlesVel = nullptr;
-	mh_psoParticlesFit = nullptr;
 	md_psoParticlesFit = nullptr;
-	mh_psoParticlesLocalBestPos = nullptr;
 	md_psoParticlesLocalBestPos = nullptr;
-	mh_psoParticlesLocalBestFit = nullptr;
 	md_psoParticlesLocalBestFit = nullptr;
-	mh_psoParticlesNhoodBestPos = nullptr;
 	md_psoParticlesNhoodBestPos = nullptr;
-	mh_psoParticlesNhoodBestFit = nullptr;
 	md_psoParticlesNhoodBestFit = nullptr;
-	 m_psoParticlesGlobalBestFit = 0;
 	md_psoParticlesGlobalBestFit = nullptr;
 }
 PsoContext::~PsoContext(void)
@@ -617,19 +645,13 @@ PsoContext::~PsoContext(void)
 	CUDA_CHECK( cudaFree(md_bestTriangles) );
 	CUDA_CHECK( cudaFree(md_currentTriangleIndex) );
 	CUDA_CHECK( cudaFree( md_currentScore ) );
-	free(mh_psoParticlesPos);
+	CUDA_CHECK( cudaFree(md_psoRandStates) );
 	CUDA_CHECK( cudaFree(md_psoParticlesPos) );
-	free(mh_psoParticlesVel);
 	CUDA_CHECK( cudaFree(md_psoParticlesVel) );
-	free(mh_psoParticlesFit);
 	CUDA_CHECK( cudaFree(md_psoParticlesFit) );
-	free(mh_psoParticlesLocalBestPos);
 	CUDA_CHECK( cudaFree(md_psoParticlesLocalBestPos) );
-	free(mh_psoParticlesLocalBestFit);
 	CUDA_CHECK( cudaFree(md_psoParticlesLocalBestFit) );
-	free(mh_psoParticlesNhoodBestPos);
 	CUDA_CHECK( cudaFree(md_psoParticlesNhoodBestPos) );
-	free(mh_psoParticlesNhoodBestFit);
 	CUDA_CHECK( cudaFree(md_psoParticlesNhoodBestFit) );
 	CUDA_CHECK( cudaFree(md_psoParticlesGlobalBestFit) );
 }
@@ -690,14 +712,7 @@ int PsoContext::init(const int imgWidth, const int imgHeight, const float4 *h_or
 	m_bestScore = FLT_MAX;
 
 	// PSO arrays
-	mh_psoParticlesPos           = (triangle*)malloc(constants.psoParticleCount*sizeof(triangle));
-	mh_psoParticlesVel           = (triangle*)malloc(constants.psoParticleCount*sizeof(triangle));
-	mh_psoParticlesFit           =    (float*)malloc(constants.psoParticleCount*sizeof(float));
-	mh_psoParticlesLocalBestPos  = (triangle*)malloc(constants.psoParticleCount*sizeof(triangle));
-	mh_psoParticlesLocalBestFit  =    (float*)malloc(constants.psoParticleCount*sizeof(float));
-	mh_psoParticlesNhoodBestPos  = (triangle*)malloc(constants.psoParticleCount*sizeof(triangle));
-	mh_psoParticlesNhoodBestFit  =    (float*)malloc(constants.psoParticleCount*sizeof(float));
-	m_psoParticlesGlobalBestFit  = FLT_MAX;
+	md_psoRandStates             = nullptr;
 	md_psoParticlesPos           = nullptr;
 	md_psoParticlesVel           = nullptr;
 	md_psoParticlesFit           = nullptr;
@@ -706,6 +721,7 @@ int PsoContext::init(const int imgWidth, const int imgHeight, const float4 *h_or
 	md_psoParticlesNhoodBestPos	 = nullptr;
 	md_psoParticlesNhoodBestFit  = nullptr;
 	md_psoParticlesGlobalBestFit = nullptr;
+	CUDA_CHECK( cudaMalloc(&md_psoRandStates,            constants.psoParticleCount*sizeof(curandState_t)) );
 	CUDA_CHECK( cudaMalloc(&md_psoParticlesPos,          constants.psoParticleCount*sizeof(triangle)) );
 	CUDA_CHECK( cudaMalloc(&md_psoParticlesVel,          constants.psoParticleCount*sizeof(triangle)) );
 	CUDA_CHECK( cudaMalloc(&md_psoParticlesFit,          constants.psoParticleCount*sizeof(float)) );
@@ -714,6 +730,7 @@ int PsoContext::init(const int imgWidth, const int imgHeight, const float4 *h_or
 	CUDA_CHECK( cudaMalloc(&md_psoParticlesNhoodBestPos, constants.psoParticleCount*sizeof(triangle)) );
 	CUDA_CHECK( cudaMalloc(&md_psoParticlesNhoodBestFit, constants.psoParticleCount*sizeof(float)) );
 	CUDA_CHECK( cudaMalloc(&md_psoParticlesGlobalBestFit,                           sizeof(float)) );
+	launchSrand();
 
 	// Upload constants to GPU
 	m_constants = constants;
@@ -725,10 +742,12 @@ int PsoContext::init(const int imgWidth, const int imgHeight, const float4 *h_or
 void PsoContext::iterate(void)
 {
 	m_currentIteration += 1;
-
 	// Choose a new random triangle to update
 	const int32_t currentTriangleIndex = rand() % min((m_currentIteration+1)/2, m_constants.maxTriangleCount);
 	CUDA_CHECK( cudaMemcpy(md_currentTriangleIndex, &currentTriangleIndex, sizeof(int32_t), cudaMemcpyHostToDevice) );
+
+	// Generate random particles for this PSO iteration
+	launchInitPsoParticles();
 
 	// Render initial solution
 	launchRender();
@@ -750,27 +769,6 @@ void PsoContext::iterate(void)
 		// Update best known solution
 		memcpy(mh_bestTriangles, mh_currentTriangles, m_constants.maxTriangleCount*sizeof(triangle));
 	}
-
-	// create random data for this PSO iter, and send to device
-	for(int32_t iParticle=0; iParticle<m_constants.psoParticleCount; ++iParticle)
-	{
-		randomizeTrianglePos(mh_psoParticlesPos+iParticle);
-		randomizeTriangleVel(mh_psoParticlesVel+iParticle);
-		mh_psoParticlesFit[iParticle] = FLT_MAX;
-		randomizeTrianglePos(mh_psoParticlesLocalBestPos+iParticle);
-		mh_psoParticlesLocalBestFit[iParticle] = FLT_MAX;
-		randomizeTrianglePos(mh_psoParticlesNhoodBestPos+iParticle);
-		mh_psoParticlesNhoodBestFit[iParticle] = FLT_MAX;
-	}
-	m_psoParticlesGlobalBestFit = FLT_MAX;
-	CUDA_CHECK( cudaMemcpy(md_psoParticlesPos,          mh_psoParticlesPos,          m_constants.psoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
-	CUDA_CHECK( cudaMemcpy(md_psoParticlesVel,          mh_psoParticlesVel,          m_constants.psoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
-	CUDA_CHECK( cudaMemcpy(md_psoParticlesFit,          mh_psoParticlesFit,          m_constants.psoParticleCount*sizeof(float),    cudaMemcpyHostToDevice) );
-	CUDA_CHECK( cudaMemcpy(md_psoParticlesLocalBestPos, mh_psoParticlesLocalBestPos, m_constants.psoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
-	CUDA_CHECK( cudaMemcpy(md_psoParticlesLocalBestFit, mh_psoParticlesLocalBestFit, m_constants.psoParticleCount*sizeof(float),    cudaMemcpyHostToDevice) );
-	CUDA_CHECK( cudaMemcpy(md_psoParticlesNhoodBestPos, mh_psoParticlesNhoodBestPos, m_constants.psoParticleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
-	CUDA_CHECK( cudaMemcpy(md_psoParticlesNhoodBestFit, mh_psoParticlesNhoodBestFit, m_constants.psoParticleCount*sizeof(float),    cudaMemcpyHostToDevice) );
-	CUDA_CHECK( cudaMemcpy(md_psoParticlesGlobalBestFit,&m_psoParticlesGlobalBestFit,                           1*sizeof(float),    cudaMemcpyHostToDevice) );
 
 	// Launch the PSO grid
 	launchRun();
@@ -851,6 +849,24 @@ void PsoContext::setGpuConstants(const PsoConstants *constants)
 	CUDA_CHECK( cudaGetSymbolSize(&destSize, dkEvoPsoDampeningFactor) );
 	assert( destSize == sizeof(float) );
 	CUDA_CHECK( cudaMemcpyToSymbol(dkEvoPsoDampeningFactor, &(constants->psoDampeningFactor), destSize) );
+}
+
+void PsoContext::launchSrand(void)
+{
+	dim3 gridDim(1,1);
+	dim3 blockDim(m_constants.psoParticleCount,1);
+	cudaSrand<<<gridDim, blockDim>>>(rand(), m_constants.psoParticleCount, md_psoRandStates);
+	CUDA_CHECK( cudaGetLastError() );
+}
+
+void PsoContext::launchInitPsoParticles(void)
+{
+	dim3 gridDim(1,1);
+	dim3 blockDim(m_constants.psoParticleCount,1);
+	initPsoParticles<<<gridDim, blockDim>>>(m_constants.psoParticleCount, md_psoRandStates,
+		md_psoParticlesPos, md_psoParticlesVel, md_psoParticlesFit, md_psoParticlesLocalBestPos, md_psoParticlesLocalBestFit,
+		md_psoParticlesNhoodBestPos, md_psoParticlesNhoodBestFit, md_psoParticlesGlobalBestFit);
+	CUDA_CHECK( cudaGetLastError() );
 }
 
 void PsoContext::launchRender(void)

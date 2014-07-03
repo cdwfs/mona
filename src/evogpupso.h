@@ -3,6 +3,11 @@
 #include <stdint.h>
 #include <vector_types.h>
 
+#pragma warning(push)
+#pragma warning(disable:4127) // constant conditional
+#include <curand_kernel.h>
+#pragma warning(pop)
+
 #define kEvoIterationCountDefault 2000       // Iteration count of main loop
 #define kEvoAlphaLimitDefault .0625f // alpha limit for images. Should be max(1.0f/255.0f, 50.0f / (float)kEvoMaxTriangleCount)
 #define kEvoCheckLimitDefault 150 //number of times we have a non-improving value before we terminate
@@ -105,24 +110,19 @@ private:
 	float *md_currentScore; ///< Sum of squared error across all md_currentPixels. [device memory]
 	float m_bestScore; ///< Best squared error across all candidate pixels seen so far.
 
-	triangle *mh_psoParticlesPos; ///< Current position of each PSO particle. [host memory]
-	triangle *md_psoParticlesPos; ///< Current position of each PSO particle. [device memory]
-	triangle *mh_psoParticlesVel; ///< Current velocity of each PSO particle. Range is [-1..1]. [host memory]
-	triangle *md_psoParticlesVel; ///< Current velocity of each PSO particle. Range is [-1..1]. [device memory]
-	float    *mh_psoParticlesFit; ///< Current summed-squared-error contribution of each particle. [host memory]
-	float    *md_psoParticlesFit; ///< Current summed-squared-error contribution of each particle. [device memory]
-	triangle *mh_psoParticlesLocalBestPos; ///< Best position found so far for each particle. [host memory]
-	triangle *md_psoParticlesLocalBestPos; ///< Best position found so far for each particle. [device memory]
-	float    *mh_psoParticlesLocalBestFit; ///< Lowest summed-squared-error found so far for each particle so far. [host memory]
-	float    *md_psoParticlesLocalBestFit; ///< Lowest summed-squared-error found so far for each particle so far. [device memory]
-	triangle *mh_psoParticlesNhoodBestPos; ///< Best position found to date among each neighborhood of particles. [host memory]
-	triangle *md_psoParticlesNhoodBestPos; ///< Best position found to date among each neighborhood of particles. [device memory]
-	float    *mh_psoParticlesNhoodBestFit; ///< Lowest summed-squared-error found so far among each neighborhood of particles. [host memory]
-	float    *md_psoParticlesNhoodBestFit; ///< Lowest summed-squared-error found so far among each neighborhood of particles. [device memory]
-	float      m_psoParticlesGlobalBestFit; ///< Lowest summed-squared-error found so far among all particles.
+	curandState_t *md_psoRandStates;        ///< RNG states for each PSO particle. [device memory]
+	triangle *md_psoParticlesPos;           ///< Current position of each PSO particle. [device memory]
+	triangle *md_psoParticlesVel;           ///< Current velocity of each PSO particle. Range is [-1..1]. [device memory]
+	float    *md_psoParticlesFit;           ///< Current summed-squared-error contribution of each particle. [device memory]
+	triangle *md_psoParticlesLocalBestPos;  ///< Best position found so far for each particle. [device memory]
+	float    *md_psoParticlesLocalBestFit;  ///< Lowest summed-squared-error found so far for each particle so far. [device memory]
+	triangle *md_psoParticlesNhoodBestPos;  ///< Best position found to date among each neighborhood of particles. [device memory]
+	float    *md_psoParticlesNhoodBestFit;  ///< Lowest summed-squared-error found so far among each neighborhood of particles. [device memory]
 	float    *md_psoParticlesGlobalBestFit; ///< Lowest summed-squared-error found so far among all particles. [device memory]
 
 	void setGpuConstants(const PsoConstants *constants);
+	void launchSrand();
+	void launchInitPsoParticles();
 	void launchRender();
 	void launchRenderProof();
 	void launchRun();
