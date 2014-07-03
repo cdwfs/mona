@@ -697,7 +697,6 @@ int PsoContext::init(const int imgWidth, const int imgHeight, const float4 *h_or
 	md_scaledOutputPixels = nullptr;
 	CUDA_CHECK( cudaMallocArray(&md_scaledOutputPixels, &m_currChannelDesc, constants.outputScale*imgWidth, constants.outputScale*imgHeight, cudaArraySurfaceLoadStore) );
 	CUDA_CHECK( cudaGetSurfaceReference(&m_scaledImg, &scaledimg) );
-	CUDA_CHECK( cudaBindSurfaceToArray(m_scaledImg, md_scaledOutputPixels, &m_currChannelDesc) );
 	mh_scaledOutputPixels   =   (float4*)malloc(constants.outputScale*imgWidth*constants.outputScale*imgHeight*sizeof(float4));
 	mh_scaledOutputRgba8888 = (uint32_t*)malloc(constants.outputScale*imgWidth*constants.outputScale*imgHeight*sizeof(uint32_t));
 
@@ -768,6 +767,7 @@ void PsoContext::iterate(void)
 		m_bestScore = m_currentScore;
 		// Update best known solution
 		memcpy(mh_bestTriangles, mh_currentTriangles, m_constants.maxTriangleCount*sizeof(triangle));
+		CUDA_CHECK( cudaMemcpy(md_bestTriangles, md_currentTriangles, m_constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
 	}
 
 	// Launch the PSO grid
@@ -783,12 +783,17 @@ float PsoContext::bestPsnr(void) const
 	return 10.0f * log10(1.0f * 1.0f / mse);
 }
 
+int PsoContext::renderToCudaArray(cudaArray_t dst)
+{
+	CUDA_CHECK( cudaBindSurfaceToArray(m_scaledImg, dst, &m_currChannelDesc) );
+	launchRenderProof();
+	return 0;
+}
 int PsoContext::renderToFile(const char *imageFileName)
 {
-	const size_t srcPitch = (size_t)m_imgWidth * sizeof(float4);
-	CUDA_CHECK( cudaMemcpy(md_bestTriangles, md_currentTriangles, m_constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
-	launchRenderProof();
+	renderToCudaArray(md_scaledOutputPixels);
 
+	const size_t srcPitch = (size_t)m_imgWidth * sizeof(float4);
 	CUDA_CHECK( cudaMemcpy2DFromArray(mh_scaledOutputPixels, m_constants.outputScale*srcPitch, md_scaledOutputPixels,
 		0,0, m_constants.outputScale*srcPitch, m_constants.outputScale*m_imgHeight, cudaMemcpyDeviceToHost) );
 	// Convert to RGBA8888 for output
