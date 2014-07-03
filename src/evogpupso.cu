@@ -109,7 +109,7 @@ __global__ void initPsoParticles(const uint particleCount, curandState_t *states
 
 
 // adds a triangle to the working image, or subtracts it if add==0
-inline   __device__  void addtriangle(float4 * img, triangle * tri, bool add, float imgWidth, float imgHeight, int imgPitch)
+inline __device__ void addtriangle(float4 * img, triangle * tri, bool add, float imgWidth, float imgHeight, int imgPitch)
 {
 	//intializes shared memory
 	__shared__ float x1,y1,x2,y2,x3,y3,m1,m2,m3,xs,xt;
@@ -343,8 +343,6 @@ inline   __device__  void scoretriangle(float * sum, triangle * tri, float imgWi
 
 	atomicAdd(sum, localsum); // Could do a more clever reduction than this, but it doesn't seem to be a bottleneck
 }
-
-
 
 // optimizes the Mth triangle using PSO
 __global__ void run(triangle * curr,   //D (triangles)
@@ -752,7 +750,7 @@ void PsoContext::iterate(void)
 	launchRender();
 	CUDA_CHECK( cudaMemcpy(&m_currentScore, md_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 
-	// check that this isn't a huge regression, revert and pick new K if so
+	// check that the previous update wasn't a huge regression, revert to the last known best triangles if so.
 	if (m_currentScore * (1.0f - 2.0f / (float)m_constants.maxTriangleCount) > m_bestScore)
 	{
 		memcpy(mh_currentTriangles, mh_bestTriangles, m_constants.maxTriangleCount*sizeof(triangle));
@@ -761,7 +759,7 @@ void PsoContext::iterate(void)
 		CUDA_CHECK( cudaMemcpy(&m_currentScore, md_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 	}
 
-	// Update best score if needed
+	// Update best score, if necessary
 	if (m_currentScore < m_bestScore && m_currentScore != 0)
 	{
 		m_bestScore = m_currentScore;
