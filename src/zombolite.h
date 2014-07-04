@@ -133,8 +133,6 @@ namespace ZomboLite
 	// OpenGL utilities
 	//
 	void FormatDebugOutputKHR(char outStr[], size_t outStrSize, GLenum source, GLenum type, GLuint id, GLenum severity, const char *msg);
-	int32_t LoadTextureFromDdsFile(const std::string &ddsFileName, GLuint *outTex);
-	int32_t LoadTextureFromDdsBuffer(const void *ddsBuffer, size_t ddsBufferSize, GLuint *outTex);
 	enum VsSemantic
 	{
 		kVsSemanticPosition  = 0,

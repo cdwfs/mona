@@ -123,7 +123,6 @@
     <ClCompile Include="mona_main.cpp" />
     <ClCompile Include="myglwidget.cpp" />
     <ClCompile Include="mona.cpp" />
-    <ClCompile Include="zombolite_dds.cpp" />
     <ClCompile Include="zombolite_opengl.cpp" />
     <ClCompile Include="zombolite_string.cpp" />
   </ItemGroup>

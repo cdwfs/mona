@@ -62,9 +62,6 @@
     <ClCompile Include="gl_core_3_3.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="zombolite_dds.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="zombolite_opengl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
