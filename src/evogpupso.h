@@ -81,6 +81,8 @@ public:
 
 	float bestScore(void) const { return m_bestScore; }
 	float bestPsnr(void) const;
+	int32_t width(void) const { return m_imgWidth; }
+	int32_t height(void) const { return m_imgHeight; }
 
 	int renderToCudaArray(cudaArray_t dst);
 	int renderToFile(const char *imageFileName);
