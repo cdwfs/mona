@@ -1,10 +1,12 @@
+#include "zombolite.h"
 #include "mona.h"
 
 #include "../stb_image.h"
 
-#include <QMessageBox>
 #include <QFileDialog>
+#include <QMessageBox>
 #include <QOpenGLContext>
+#include <QTimer>
 
 #include <cassert>
 #include <cstdint>
@@ -15,6 +17,7 @@ mona::mona(QWidget *parent)
 	, m_glWidget(nullptr)
 	, m_psoConstants(nullptr)
 	, m_psoContext(nullptr)
+	, m_bestPsnr(0)
 {
 	ui.setupUi(this);
 
@@ -44,10 +47,16 @@ mona::mona(QWidget *parent)
 	ui.verticalLayout->addWidget(m_glWidget);
 
 	m_psoConstants = new PsoConstants;
+	m_psoConstants->outputScale = 1;
 	// Initialize PSO context with the default reference image
 	m_psoContext = new PsoContext;
 	QImage defaultRefImage(":/mona/lisa.jpg");
+	defaultRefImage = defaultRefImage.rgbSwapped();
 	initPso(defaultRefImage.width(), defaultRefImage.height(), (const uint32_t*)defaultRefImage.bits());
+
+	QTimer *psoTimer = new QTimer(this);
+	connect( psoTimer, SIGNAL(timeout()), this, SLOT(iteratePso()) );
+	psoTimer->start(0);
 }
 
 mona::~mona()
@@ -96,6 +105,9 @@ void mona::loadRefImage(void)
 
 		// Original pixels are no longer needed in host memory
 		stbi_image_free(const_cast<uint32_t*>(refImagePixels));
+
+		// Recreate GL texture to match new ref image dimensions
+		m_glWidget->resizeTexture(refImageWidth, refImageHeight);
 	}
 
 	if (!success)
@@ -113,15 +125,43 @@ void mona::loadRefImage(void)
 
 void mona::initPso(const int32_t refImageWidth, const int32_t refImageHeight, const uint32_t *refImagePixels)
 {
-	// Convert to F32x4, as expected by the CUDA code.
+	// Populate PSO context with reference image pixels
 	float4 *h_originalPixels = (float4*)malloc(refImageWidth*refImageHeight*sizeof(float4));
 	for(int32_t iPixel=0; iPixel<refImageWidth*refImageHeight; ++iPixel)
 	{
+		// Convert to F32x4, as expected by the CUDA code.
 		h_originalPixels[iPixel].x = (float)((refImagePixels[iPixel] >>  0) & 0xFF) / 255.0f;
 		h_originalPixels[iPixel].y = (float)((refImagePixels[iPixel] >>  8) & 0xFF) / 255.0f;
 		h_originalPixels[iPixel].z = (float)((refImagePixels[iPixel] >> 16) & 0xFF) / 255.0f;
 		h_originalPixels[iPixel].w = (float)((refImagePixels[iPixel] >> 24) & 0xFF) / 255.0f;
 	}
 	m_psoContext->init(refImageWidth, refImageHeight, h_originalPixels, *m_psoConstants);
-	free(h_originalPixels);
+	free(h_originalPixels); // no longer required
+
+	m_bestPsnr = 0;
+}
+
+void mona::iteratePso(void)
+{
+	m_psoContext->iterate();
+	float newPsnr = m_psoContext->bestPsnr();
+	if (newPsnr <= m_bestPsnr)
+		return;
+	// New best score! Update GL widget's display
+	m_bestPsnr = newPsnr;
+	cudaGraphicsResource_t cudaTexResource = m_glWidget->evoTexResource();
+	if (nullptr == cudaTexResource)
+	{
+		// Make sure the destination texture has been initialized!
+		m_glWidget->resizeTexture(m_psoContext->width(), m_psoContext->height());
+		cudaTexResource = m_glWidget->evoTexResource();
+	}
+	CUDA_CHECK( cudaGraphicsMapResources(1, &cudaTexResource) );
+	cudaArray_t evoTexArray = nullptr;
+	size_t evoTexPixelsSize = m_psoContext->width() * m_psoContext->height() * sizeof(float4);
+	CUDA_CHECK( cudaGraphicsSubResourceGetMappedArray(&evoTexArray, cudaTexResource, 0, 0) );
+	m_psoContext->renderToCudaArray(evoTexArray);
+	CUDA_CHECK( cudaGraphicsUnmapResources(1, &cudaTexResource) );
+	m_glWidget->updateGL(); // Force a repaint
+
 }
