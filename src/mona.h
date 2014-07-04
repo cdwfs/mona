@@ -5,6 +5,7 @@
 #include "myglwidget.h"
 
 #include <QtWidgets/QMainWindow>
+#include <QTimer>
 
 class mona : public QMainWindow, Ui_monaWindow
 {
@@ -16,6 +17,7 @@ public:
 
 public slots:
 	void loadRefImage(void);
+	void togglePause(void);
 	void iteratePso(void);
 
 protected:
@@ -23,6 +25,7 @@ protected:
 	MyGLWidget *m_glWidget;
 	PsoConstants *m_psoConstants;
 	PsoContext *m_psoContext;
+	QTimer m_psoTimer;
 	float m_bestPsnr; // Best PSNR seen to date
 private:
 	void initPso(int32_t imgWidth, int32_t imgHeight, const uint32_t *refPixels);

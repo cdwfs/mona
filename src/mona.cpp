@@ -6,7 +6,6 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QOpenGLContext>
-#include <QTimer>
 
 #include <cassert>
 #include <cstdint>
@@ -17,11 +16,14 @@ mona::mona(QWidget *parent)
 	, m_glWidget(nullptr)
 	, m_psoConstants(nullptr)
 	, m_psoContext(nullptr)
+	, m_psoTimer(this)
 	, m_bestPsnr(0)
 {
 	ui.setupUi(this);
 
-	QObject::connect(ui.actionOpen, &QAction::triggered, this, &mona::loadRefImage);
+	// Connect signals to slots
+	QObject::connect(ui.actionOpen,  &QAction::triggered, this, &mona::loadRefImage);
+	QObject::connect(ui.actionPause, &QAction::toggled, this, &mona::togglePause);
 
 	//
 	// Set up the OpenGL view to render the evolved image
@@ -54,9 +56,8 @@ mona::mona(QWidget *parent)
 	defaultRefImage = defaultRefImage.rgbSwapped();
 	initPso(defaultRefImage.width(), defaultRefImage.height(), (const uint32_t*)defaultRefImage.bits());
 
-	QTimer *psoTimer = new QTimer(this);
-	connect( psoTimer, SIGNAL(timeout()), this, SLOT(iteratePso()) );
-	psoTimer->start(0);
+	connect( &m_psoTimer, SIGNAL(timeout()), this, SLOT(iteratePso()) );
+	m_psoTimer.start(0);
 }
 
 mona::~mona()
@@ -108,6 +109,13 @@ void mona::loadRefImage(void)
 
 		// Recreate GL texture to match new ref image dimensions
 		m_glWidget->resizeTexture(refImageWidth, refImageHeight);
+
+		m_bestPsnr = 0;
+		ui.iterationCount->display(0);
+		if (!ui.actionPause->isChecked())
+		{
+			ui.actionPause->toggle();
+		}
 	}
 
 	if (!success)
@@ -137,13 +145,13 @@ void mona::initPso(const int32_t refImageWidth, const int32_t refImageHeight, co
 	}
 	m_psoContext->init(refImageWidth, refImageHeight, h_originalPixels, *m_psoConstants);
 	free(h_originalPixels); // no longer required
-
-	m_bestPsnr = 0;
 }
 
 void mona::iteratePso(void)
 {
 	m_psoContext->iterate();
+	ui.iterationCount->display(ui.iterationCount->intValue()+1);
+
 	float newPsnr = m_psoContext->bestPsnr();
 	if (newPsnr <= m_bestPsnr)
 		return;
@@ -163,5 +171,20 @@ void mona::iteratePso(void)
 	m_psoContext->renderToCudaArray(evoTexArray);
 	CUDA_CHECK( cudaGraphicsUnmapResources(1, &cudaTexResource) );
 	m_glWidget->updateGL(); // Force a repaint
+}
 
+void mona::togglePause(void)
+{
+	if (ui.actionPause->isChecked())
+	{
+		// unpause
+		m_psoTimer.start(0);
+		ui.pauseButton->setText("Pause");
+	}
+	else
+	{
+		// pause
+		m_psoTimer.stop();
+		ui.pauseButton->setText("Resume");
+	}
 }
