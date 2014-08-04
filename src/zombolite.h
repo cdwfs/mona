@@ -38,8 +38,8 @@
 // Custom assert macro that prints a formatted error message and breaks immediately from the calling code
 // (instead of instead the code to _wassert)
 #if defined(NDEBUG)
-	#define ZOMBOLITE_ASSERT(cond,msg,...) (void)(1 ? (void)0 : ( (void)(cond) ) )
-	#define ZOMBOLITE_ASSERT_RETURN(cond,retval,msg,...) if (!(cond)) { return (retval); }
+	#define ZOMBOLITE_ASSERT(cond,msg,...) do { (void)( true ? (void)0 : (void)(cond) ); } while(0,0)
+	#define ZOMBOLITE_ASSERT_RETURN(cond,retval,msg,...) do { if (!(cond)) { return (retval); } } while(0,0)
 #elif defined(_MSC_VER)
 	#define ZOMBOLITE_ASSERT(cond,msg,...) \
 		__pragma(warning(push)) \
@@ -49,12 +49,11 @@
 				char *buffer = (char*)malloc(1024); \
 				_snprintf_s(buffer, 1024, 1023, msg ## "\n", __VA_ARGS__); \
 				buffer[1023] = 0; \
-				fprintf(stderr, buffer); \
 				OutputDebugStringA(buffer); \
 				free(buffer); \
 				IsDebuggerPresent() ? __debugbreak() : assert(cond); \
 			} \
-		} while(0) \
+		} while(0,0) \
 		__pragma(warning(pop))
 	#define ZOMBOLITE_ASSERT_RETURN(cond,retval,msg,...) \
 		__pragma(warning(push)) \
@@ -64,13 +63,12 @@
 				char *buffer = (char*)malloc(1024); \
 				_snprintf_s(buffer, 1024, 1023, msg ## "\n", __VA_ARGS__); \
 				buffer[1023] = 0; \
-				fprintf(stderr, buffer); \
 				OutputDebugStringA(buffer); \
 				free(buffer); \
 				IsDebuggerPresent() ? __debugbreak() : assert(cond); \
 				return (retval); \
 			} \
-		} while(0) \
+		} while(0,0) \
 		__pragma(warning(pop))
 #else
 	// Unsupported platform
@@ -79,21 +77,21 @@
 		__pragma(warning(disable:4127)) \
 		do { \
 			if (!(cond)) { \
-				fprintf(stderr, buffer, msg ## "\n", __VA_ARGS__); \
+				printf(buffer, msg ## "\n", __VA_ARGS__); \
 				assert(cond); \
 			} \
-		} while(0) \
+		} while(0,0) \
 		__pragma(warning(pop))
 	#define ZOMBOLITE_ASSERT_RETURN(cond,retval,msg,...) \
 		__pragma(warning(push)) \
 		__pragma(warning(disable:4127)) \
 		do { \
 			if (!(cond)) { \
-				fprintf(stderr, buffer, msg ## "\n", __VA_ARGS__); \
+				printf(buffer, msg ## "\n", __VA_ARGS__); \
 				assert(cond); \
 				return (retval); \
 			} \
-		} while(0) \
+		} while(0,0) \
 		__pragma(warning(pop))
 #endif
 #define ZOMBOLITE_ERROR(msg,...) ZOMBOLITE_ASSERT(0, msg, __VA_ARGS__)
@@ -134,7 +132,6 @@ namespace ZomboLite
 	//
 	// OpenGL utilities
 	//
-	int32_t InitializeGLEW(void); // Call *after* the OpenGL context has been created!
 	void FormatDebugOutputKHR(char outStr[], size_t outStrSize, GLenum source, GLenum type, GLuint id, GLenum severity, const char *msg);
 	int32_t LoadTextureFromDdsFile(const std::string &ddsFileName, GLuint *outTex);
 	int32_t LoadTextureFromDdsBuffer(const void *ddsBuffer, size_t ddsBufferSize, GLuint *outTex);

@@ -141,7 +141,9 @@ void ZomboLite::GenVertexArray(GLuint *outVAO, const char *debugLabel)
 	glGenVertexArrays(1, outVAO);
 	if (*outVAO != 0 && ogl_ext_KHR_debug)
 	{
+		glBindVertexArray(*outVAO);
 		glObjectLabel(GL_VERTEX_ARRAY, *outVAO, -1, debugLabel);
+		glBindVertexArray(0);
 	}
 }
 void ZomboLite::GenBuffer(GLuint *outBuf, const char *debugLabel)
@@ -149,7 +151,12 @@ void ZomboLite::GenBuffer(GLuint *outBuf, const char *debugLabel)
 	glGenBuffers(1, outBuf);
 	if (*outBuf != 0 && ogl_ext_KHR_debug)
 	{
-		glObjectLabel(GL_BUFFER, *outBuf, -1, debugLabel);
+		// disabled: some drivers require the object to be bound before glObjectLabel is called,
+		// and we don't know which target to bind it to yet...
+		//glBindBuffer(GL_ARRAY_BUFFER, *outBuf);
+		//glObjectLabel(GL_BUFFER, *outBuf, -1, debugLabel);
+		//glBindBuffer(GL_ARRAY_BUFFER, 0);
+		(void)debugLabel;
 	}
 }
 void ZomboLite::GenTexture(GLuint *outTex, const char *debugLabel)
@@ -157,7 +164,12 @@ void ZomboLite::GenTexture(GLuint *outTex, const char *debugLabel)
 	glGenTextures(1, outTex);
 	if (*outTex != 0 && ogl_ext_KHR_debug)
 	{
-		glObjectLabel(GL_TEXTURE, *outTex, -1, debugLabel);
+		// disabled: some drivers require the object to be bound before glObjectLabel is called,
+		// and we don't know which target to bind it to yet...
+		//glBindTexture(GL_TEXTURE_2D, *outTex);
+		//glObjectLabel(GL_TEXTURE, *outTex, -1, debugLabel);
+		//glBindTexture(GL_TEXTURE_2D, 0);
+		(void)debugLabel;
 	}
 }
 void ZomboLite::GenSampler(GLuint *outSampler, const char *debugLabel)
@@ -165,7 +177,9 @@ void ZomboLite::GenSampler(GLuint *outSampler, const char *debugLabel)
 	glGenSamplers(1, outSampler);
 	if (*outSampler != 0 && ogl_ext_KHR_debug)
 	{
+		glBindSampler(0, *outSampler);
 		glObjectLabel(GL_SAMPLER, *outSampler, -1, debugLabel);
+		glBindSampler(0, 0);
 	}
 }
 GLuint ZomboLite::CreateProgram(const char *debugLabel)
@@ -251,9 +265,9 @@ GLuint ZomboLite::CreateGlslProgram(const std::string &vsSource, const std::stri
 	}
 
 	if (vertexShader != 0 && ogl_ext_KHR_debug)
-		glObjectLabel(GL_SHADER, program, -1, (std::string("VS: ")+std::string(debugLabel)).c_str());
+		glObjectLabel(GL_SHADER, vertexShader, -1, (std::string("VS: ")+std::string(debugLabel)).c_str());
 	if (fragmentShader != 0 && ogl_ext_KHR_debug)
-		glObjectLabel(GL_SHADER, program, -1, (std::string("FS: ")+std::string(debugLabel)).c_str());
+		glObjectLabel(GL_SHADER, fragmentShader, -1, (std::string("FS: ")+std::string(debugLabel)).c_str());
 	if (program != 0 && ogl_ext_KHR_debug)
 		glObjectLabel(GL_PROGRAM, program, -1, debugLabel);
 
