@@ -69,6 +69,7 @@ int main(int argc, char *argv[])
 	CUDA_CHECK( cudaGetDeviceProperties(&deviceProps, deviceId) );
 	const int32_t deviceMpCount = deviceProps.multiProcessorCount;
 	const int32_t deviceCudaCoresPerMp = _ConvertSMVer2Cores(deviceProps.major, deviceProps.minor);
+	CUDA_CHECK( cudaDeviceSetLimit(cudaLimitDevRuntimeSyncDepth, 2) );
 
 	printf("%s (%d MPs, %d cores/MP -> %d CUDA cores\n\n", deviceProps.name, deviceMpCount, deviceCudaCoresPerMp, deviceMpCount*deviceCudaCoresPerMp);
 
