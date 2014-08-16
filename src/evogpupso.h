@@ -20,7 +20,8 @@
 #define kEvoPsoDampeningFactorDefault 0.85f // Dampening factor for PSO iteration. Use 0.85f for faster short-term convergence; 0.999f for higher quality long-term convergence.
 
 #define kEvoOutputFileDefault "out.png"
-#define kEvoBlockDim 16   // block width/height
+#define kEvoBlockDimX 16   // block width
+#define kEvoBlockDimY 16   // block height
 #define kEvoNumFloatsPerTriangle 9
 
 class PsoConstants

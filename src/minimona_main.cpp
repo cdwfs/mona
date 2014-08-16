@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 
 	// Each PSO thread block processes one PSO particle. It would be wasteful to simulate fewer particles than the GPU can support at full occupancy!
 	// Compute maximum number of PSO thread blocks per MP
-	const int32_t deviceMaxPsoBlocksPerMp = deviceProps.maxThreadsPerMultiProcessor / (kEvoBlockDim*kEvoBlockDim);
+	const int32_t deviceMaxPsoBlocksPerMp = deviceProps.maxThreadsPerMultiProcessor / (kEvoBlockDimX*kEvoBlockDimY);
 	// Launch 4x as many blocks as the GPU can support, to make sure it's fully saturated.
 	//  - TODO: Actually use this value.
 	//  - TODO: The PSO neighborhood size should be based on this value as well.
