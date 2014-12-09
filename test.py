@@ -17,9 +17,9 @@ inputs = [
 
 if __name__ == "__main__":
     # Build executable
-    msvc_tools_dir = os.getenv("VS100COMNTOOLS")
+    msvc_tools_dir = os.getenv("VS120COMNTOOLS")
     if msvc_tools_dir is None:
-        raise RuntimeError("Visual Studio 10.0 not detected!")
+        raise RuntimeError("Visual Studio 12.0 not detected!")
     devenv_path = msvc_tools_dir + "..\\IDE\\devenv.com"
     rebuildCmd = [devenv_path, "src/mona.sln", "/project", "minimona", "/projectconfig", "Release", "/rebuild"]
     returnCode = subprocess.call(rebuildCmd)
