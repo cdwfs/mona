@@ -364,7 +364,7 @@ __global__ void run(triangle * curr,   //D (triangles)
 	// loop over pso updates
 	for(int q = 0; q < dkEvoPsoIterationCount; q++) {
 
-		// integrate position
+		// integrate particle position/velocity for this iteration
 		if(q > 0 && threadIdx.y==0 && threadIdx.x < kEvoNumFloatsPerTriangle) {
 			float vmax =  .2f * my_randf() + 0.05f;
 			float vmin = -.2f * my_randf() - 0.05f;
@@ -378,15 +378,16 @@ __global__ void run(triangle * curr,   //D (triangles)
 			*v = min( max(*v, vmin), vmax );
 			*p += *v;
 			if(fit[blockIdx.x] > 0 && my_randf() < 0.01f)
-				*p = my_randf();
+				*p = my_randf(); //?
 			if (threadIdx.x >= 6)
 			{
-				*p = clip(*p, 0.0f, 1.0f);
+				*p = clip(*p, 0.0f, 1.0f); //?
 			}
 		}
 		__syncthreads();
 
-		// eval fitness
+		// evaluate the fitness of the current particle triangle: pretend to rasterize it, and sum up the
+		// per-pixel error.
 		fit[blockIdx.x] = 0;
 		scoretriangle(&fit[blockIdx.x], &pos[blockIdx.x], imgWidth, imgHeight);
 
@@ -402,7 +403,9 @@ __global__ void run(triangle * curr,   //D (triangles)
 			}
 
 			// global max find
-			// This is a race condition! Update must happen atomically!
+			// This is a race condition! Update must happen atomically! It also incorrectly assumes that all
+			// particles are running simultaneously. But, in the grand scheme of things, it probably won't hurt
+			// anything except determinism.
 			if (fit[blockIdx.x] < *gbval) {
 				*gbval = fit[blockIdx.x];
 				curr[*M] = pos[blockIdx.x];
