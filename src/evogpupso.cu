@@ -756,8 +756,8 @@ void PsoContext::iterate(void)
 	// check that the previous update wasn't a huge regression, revert to the last known best triangles if so.
 	if (m_currentScore * (1.0f - 2.0f / (float)m_constants.maxTriangleCount) > m_bestScore)
 	{
-		memcpy(mh_currentTriangles, mh_bestTriangles, m_constants.maxTriangleCount*sizeof(triangle));
-		CUDA_CHECK( cudaMemcpy(md_currentTriangles, mh_currentTriangles, m_constants.maxTriangleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
+		CUDA_CHECK( cudaMemcpy(mh_currentTriangles, mh_bestTriangles, m_constants.maxTriangleCount*sizeof(triangle), cudaMemcpyHostToHost) );
+		CUDA_CHECK( cudaMemcpy(md_currentTriangles, mh_bestTriangles, m_constants.maxTriangleCount*sizeof(triangle), cudaMemcpyHostToDevice) );
 		launchRender();
 		CUDA_CHECK( cudaMemcpy(&m_currentScore, md_currentScore, sizeof(float), cudaMemcpyDeviceToHost) );
 	}
@@ -767,7 +767,7 @@ void PsoContext::iterate(void)
 	{
 		m_bestScore = m_currentScore;
 		// Update best known solution
-		memcpy(mh_bestTriangles, mh_currentTriangles, m_constants.maxTriangleCount*sizeof(triangle));
+		CUDA_CHECK( cudaMemcpy(mh_bestTriangles, mh_currentTriangles, m_constants.maxTriangleCount*sizeof(triangle), cudaMemcpyHostToHost) );
 		CUDA_CHECK( cudaMemcpy(md_bestTriangles, md_currentTriangles, m_constants.maxTriangleCount*sizeof(triangle), cudaMemcpyDeviceToDevice) );
 	}
 
