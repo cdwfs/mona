@@ -109,6 +109,7 @@ void mona::loadRefImage(void)
 
 		// Recreate GL texture to match new ref image dimensions
 		m_glWidget->resizeTexture(refImageWidth, refImageHeight);
+		ui.verticalLayout->setGeometry(QRect(0,0,256,256));
 
 		m_bestPsnr = 0;
 		ui.iterationCount->display(0);
