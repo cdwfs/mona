@@ -26,7 +26,10 @@ if __name__ == "__main__":
     if returnCode != 0:
         raise RuntimeError("build failed!")
 
-    out_dir = "test-" + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    try: git_branch_hash = subprocess.check_output(["git","log","-n","1","--format=%H"]).decode().strip()
+    except: git_branch_hash = ""
+
+    out_dir = "test-" + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + "-" + git_branch_hash[0:8]
     os.mkdir(out_dir)
 
     gnuplot_fitness_file = path.join(out_dir, "fitness.p")
