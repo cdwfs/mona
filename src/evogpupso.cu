@@ -384,11 +384,11 @@ __global__ void run(triangle * curr,   //D (triangles)
 				*p = clip(*p, 0.0f, 1.0f); //?
 			}
 		}
+		fit[blockIdx.x] = 0;
 		__syncthreads();
 
 		// evaluate the fitness of the current particle triangle: pretend to rasterize it, and sum up the
 		// per-pixel error.
-		fit[blockIdx.x] = 0;
 		scoretriangle(&fit[blockIdx.x], &pos[blockIdx.x], imgWidth, imgHeight);
 
 		if(threadIdx.x+threadIdx.y == 0) {
