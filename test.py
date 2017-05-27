@@ -1,4 +1,4 @@
-import datetime
+﻿import datetime
 import os
 import posixpath as path
 import subprocess
@@ -13,6 +13,7 @@ inputs = [
     "moonman.jpg",
     "picasso_three_musicians_moma.jpg",
     "slisa.jpg",
+    "mitchell-edit.jpg",
 ]
 
 if __name__ == "__main__":

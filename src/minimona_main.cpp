@@ -23,6 +23,7 @@ Usage: minimona [OPTIONS] <input image>\n\
 OPTIONS:\n\
 -out FILE.png      Write final output image to FILE.png [default: %s]\n\
 -stats FILE        Write per-generation statistics to FILE [default: none]\n\
+-tris FILE         Write final triangles to FILE [default: none]\n\
 -temp DIR          Write intermediate image results to DIR. Images will be\n\
                    written every 100 generations. [default: none]\n\
 -scale N           Scale factor for output image. Must be >= 1. [default: %d]\n\
@@ -86,6 +87,7 @@ int main(int argc, char *argv[])
 	const char *inImageFileName   = nullptr;
 	const char *outImageFileName  = kEvoOutputFileDefault;
 	const char *outStatsFileName  = nullptr;
+	const char *outTrisFileName   = nullptr;
 	const char *outTempDirName    = nullptr;
 	PsoConstants constants;
 	if (argc < 2)
@@ -100,6 +102,9 @@ int main(int argc, char *argv[])
 			continue;
 		} else if (strncmp(argv[iArg], "-stats", 7) == 0 && iArg+1 < argc) {
 			outStatsFileName = argv[++iArg];
+			continue;
+		} else if (strncmp(argv[iArg], "-tris", 6) == 0 && iArg+1 < argc) {
+			outTrisFileName = argv[++iArg];
 			continue;
 		} else if (strncmp(argv[iArg], "-temp", 6) == 0 && iArg+1 < argc) {
 			outTempDirName = argv[++iArg];
@@ -273,6 +278,10 @@ int main(int argc, char *argv[])
 	{
 		fprintf(stderr, "Error writing final output image '%s'\n", outImageFileName);
 		return -1;
+	}
+	if (outTrisFileName)
+	{
+		psoContext->exportTrianglesToFile(outTrisFileName);
 	}
 
 	// cleanup -- lots more to do here

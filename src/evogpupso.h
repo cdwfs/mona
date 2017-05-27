@@ -87,6 +87,7 @@ public:
 
 	int renderToCudaArray(cudaArray_t dst);
 	int renderToFile(const char *imageFileName);
+	int exportTrianglesToFile(const char *trianglesFileName);
 
 private:
 	PsoConstants m_constants;

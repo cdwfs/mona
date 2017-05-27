@@ -819,6 +819,37 @@ int PsoContext::renderToFile(const char *imageFileName)
 	return 0;
 }
 
+int PsoContext::exportTrianglesToFile(const char *trianglesFileName)
+{
+	FILE *outFile = fopen(trianglesFileName, "w");
+	if (outFile)
+	{
+		for(int32_t iTri=0; iTri<m_constants.maxTriangleCount; ++iTri)
+		{
+			const triangle &t = mh_bestTriangles[iTri];
+			float area = fabsf( 0.5f * (t.x1*(t.y2-t.y3) + t.x2*(t.y3-t.y1) + t.x3*(t.y1-t.y2)) );
+			if (area >= 0.0001f)
+			{
+				fprintf(outFile, "[%9.6f,%9.6f, %9.6f,%9.6f, %9.6f,%9.6f, %3d,%3d,%3d, %3d], // %6.4f\n",
+					t.x1*2.0f-1.0f,
+					t.y1*2.0f-1.0f,
+					t.x2*2.0f-1.0f,
+					t.y2*2.0f-1.0f,
+					t.x3*2.0f-1.0f,
+					t.y3*2.0f-1.0f,
+					(int)( clamp(255.0f*t.r+0.5f, 0.0f, 255.0f) ),
+					(int)( clamp(255.0f*t.g+0.5f, 0.0f, 255.0f) ),
+					(int)( clamp(255.0f*t.b+0.5f, 0.0f, 255.0f) ),
+					(int)( clamp(255.0f*m_constants.alphaLimit+0.5f, 0.0f, 255.0f) ),
+					area
+					);
+			}
+		}
+		fclose(outFile);
+	}
+	return 0;
+}
+
 
 void PsoContext::setGpuConstants(const PsoConstants *constants)
 {
